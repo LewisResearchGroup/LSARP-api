@@ -1,12 +1,19 @@
 # LSARP api
 
+
+### Dependencies
+
 Depends on `lrg-omics` package [link](https://github.com/LSARP/lrg-omics).
 
+
+### Run the API (fast-API)
 To start the api you have to serve the app e.g. with `uvicorn`:
 
     uvicorn LSARP.api.main:app --reload
 
-Then go to localhost:8000/docs to test the API.
+Then go to http://localhost:8000/docs to test the API.
+
+### In IPython/Jupyter
 
 In the juypter notebook:
 
@@ -14,12 +21,21 @@ In the juypter notebook:
 
     lsarp = LSARP(path='/data/test-lsarp-api', engine='parquet')
 
-Will save the ingested data to `/data/test-lsarp-api`.
+Will save the ingested data to `/data/test-lsarp-api`. 
 
+
+
+    lsarp.metabolomics_worklist.create(fn_worklist) 
+    lsarp.metabolomics_mint.create(fn_mint_results)
+    lsarp.protein_groups.create(fn_protein_groups)
     
-    lsarp.protein_groups.get() 
+    lsarp.metabolomics_worklist.get()
+    lsarp.metabolomics_mint.get()
+    lsarp.protein_groups.get()
+    
+    
 
-
+### Notes
 
 I am currently reimplementing the old code:
 
@@ -58,3 +74,22 @@ class LSARP():
 
 ```
 
+
+# Examples
+
+
+### Get metabolomics data tables with dask.
+
+```
+import dask.dataframe as dd
+
+
+df = lsarp.metabolomics_mint.crosstab('peak_max', kind='dask')
+wl = lsarp.metabolomics_worklist.get(kind='dask')
+
+metabolomics_data = wl.merge(df, left_on='MS_FILE', right_index=True)
+
+%%time
+metab_neg, metab_pos = dd.compute( metabolomics_data[metabolomics_data.MS_MODE == 'Neg'], 
+                                   metabolomics_data[metabolomics_data.MS_MODE == 'Pos'] )
+```                              
