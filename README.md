@@ -1,5 +1,6 @@
 # LSARP api
 
+Depends on `lrg-omics` package [link](https://github.com/LSARP/lrg-omics).
 
 To start the api you have to serve the app e.g. with `uvicorn`:
 
