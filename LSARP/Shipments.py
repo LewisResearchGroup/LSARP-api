@@ -17,9 +17,8 @@ class Shipments():
         self.engine = get_engine(engine)( path=self._path )
         self.get = self.engine.get
 
-
     def create(self, fn):
-        self.read(fn).check().format().put()
+        self.read(fn).format().check().put()
 
 
     def read(self, fn):
@@ -33,22 +32,26 @@ class Shipments():
 
 
     def format(self):
-        self._df_formated = T.format_shipment(self._df)
+        self._df = T.format_shipment(self._df)
         self._plate_id = T.get_plate_id_from_shipments_data(self._df)
         return self
 
 
     def put(self, fn=None,):
-        df = self._df_formated
+        df = self._df
         Id = self._plate_id
         assert Id is not None, Id
         self.engine.put(Id, df)  
 
 
-
-        
-
-        
+    def get_plate_setups(self):
+        shipments = self.get()
+        plate_setups = shipments[['PLATE_SETUP', 'PLATE_ROW', 'PLATE_COL', 'ISOLATE_NBR']]\
+                            .drop_duplicates()\
+                            .groupby(['PLATE_SETUP','PLATE_ROW', 'PLATE_COL'])\
+                            .first()\
+                            .reset_index()
+        return plate_setups
 
 
 

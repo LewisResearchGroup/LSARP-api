@@ -1,3 +1,5 @@
+import os
+
 import logging
 
 import pandas as pd
@@ -7,10 +9,11 @@ from pathlib import Path as P
 from distributed import Client
 from dask.cache import Cache
 
-cache = Cache(2e9)  # Leverage two gigabytes of memory
-cache.register() 
-
-#client = Client(n_workers=16, threads_per_worker=2)
+try:
+    cache = Cache(2e9)  # Leverage two gigabytes of memory
+    cache.register() 
+except:
+    logging.warning('No cache registered.')
 
 from . import tools as T
 from .MaxQuantReader import MaxQuantReader
@@ -36,20 +39,19 @@ class LSARP():
                           }
         
         self._maxquant_results_src = maxquant_results_src
-
         self.shipments  = Shipments( path=self.path/engine/'shipments', engine=engine )
         self.protein_groups = MaxQuant( path=self.path/engine/'maxquant'/'protein_groups', engine=engine)
         self.plex_data = PlexData( path=self.path/engine/'plates'/'proteomics', engine=engine)
         self.metabolomics_worklist = MetabolomicsWorklist( path=self.path/engine/'metabolomics'/'plates', engine=engine)
         self.metabolomics_mint = MintResults( path=self.path/engine/'metabolomics/mint', engine=engine)
 
-        #self.metabolom = Metabolom( path=self.path/engine/'metabolom', engine=engine )
-        #self.albpubhea = AlbPubHea( path=self.path/engine/'albpubhea', engine=engine )
-    
 
     @property
     def path(self):
         return self._path
+
+    def add_shipment(self, fn):
+        self.shipments.create(fn)
 
 
     def add_morphology(self, fn, plate):
@@ -87,9 +89,9 @@ class LSARP():
     
     def get_path(self, kind=None, create=False):
         if kind is None and plate is None: 
-            path = self._root
+            path = self._path
         else:
-            path = self._root / self._sub_paths[kind]
+            path = self._path / self._sub_paths[kind]
         if create: os.makedirs(path, exist_ok=True)
         return path
     
@@ -103,9 +105,10 @@ class LSARP():
         fns = glob(str(path/'*csv'))
         return pd.concat( [pd.read_csv(fn) for fn in fns] ).reset_index(drop=True)
 
+
     def morphologies(self):
         df = T.read_all_csv( self.get_path(kind='morphology') )
-        return df.sort_values(['DATE_FROZEN', 'PLATE', 'PLATE_ROW', 'PLATE_COL']).reset_index(drop=True)
+        return df.sort_values(['PLATE', 'PLATE_ROW', 'PLATE_COL']).reset_index(drop=True)
     
     
     def add_maxquant(self, path, plate, row, raw_file=None):
