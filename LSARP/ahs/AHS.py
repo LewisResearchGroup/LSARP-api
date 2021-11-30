@@ -121,7 +121,9 @@ def get_vs():
     fn = "RMT24154_PIM_VS_DE_IDENT.csv"
     df = pd.read_csv(f"{DPATH/fn}", low_memory=False, dtype=str)
     df["DETHDATE"] = convert_datetime(df["DETHDATE"])
-    df = df.rename(columns={"SEX": "GENDER", "DETHDATE": "DEATH_DATE", "ISOLATE_NBR": "BI_NBR"})
+    df = df.rename(
+        columns={"SEX": "GENDER", "DETHDATE": "DEATH_DATE", "ISOLATE_NBR": "BI_NBR"}
+    )
     df["GENDER"] = df["GENDER"].replace(gender_map)
     df["AGE"] = df["AGE"].astype(int)
     return df

@@ -17,7 +17,7 @@ def load_apl_data(years=None):
     df = df[df.ENCNTR_ADMIT_DTM.dt.year < 2022]
     df["AGE_GRP"] = df["NAGE_YR"].apply(age_to_age_group)
     df["ORGANISM"] = df["ORGANISM"].replace({"MRSA": "SA", "MSSA": "SA"})
-    add_date_features_from_datetime_col(df, 'ENCNTR_ADMIT_DTM')
+    add_date_features_from_datetime_col(df, "ENCNTR_ADMIT_DTM")
     if years is not None:
         df = df[df.YEAR.astype(int).isin(years)]
     return df
@@ -273,4 +273,9 @@ class APL:
 
     @property
     def pid_bi_nbr(self):
-        return self.cultures[['PID', 'BI_NBR']].dropna().drop_duplicates().reset_index(drop=True)    
+        return (
+            self.cultures[["PID", "BI_NBR"]]
+            .dropna()
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
