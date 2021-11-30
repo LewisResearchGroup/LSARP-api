@@ -6,13 +6,13 @@ from ..LSARP import LSARP
 
 app = FastAPI()
 
-lsarp = LSARP(path='/data/test-lsarp-api', engine='parquet')
+lsarp = LSARP(path="/data/test-lsarp-api", engine="parquet")
 
 
 def parse_content(fn, content):
-    if fn.lower().endswith('.csv'):
-        print('Parse as CSV file')
-        content = io.StringIO(content.decode('utf-8'))
+    if fn.lower().endswith(".csv"):
+        print("Parse as CSV file")
+        content = io.StringIO(content.decode("utf-8"))
     return content
 
 
@@ -35,6 +35,7 @@ async def shipments_get():
     json = lsarp.shipments.get().to_json()
     return json
 
+
 @app.post("/proteomics/plates/put")
 async def proteomics_plates_put(file: UploadFile = File(...)):
     content = await file.read()
@@ -48,6 +49,7 @@ async def proteomics_plates_put(file: UploadFile = File(...)):
 async def proteomics_plates_get():
     json = lsarp.plex_data.get().to_json()
     return json
+
 
 @app.post("/proteomics/maxquant/protein-groups/put")
 async def protein_groups_put(file: UploadFile = File(...)):

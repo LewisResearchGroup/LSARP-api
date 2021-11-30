@@ -5,7 +5,7 @@ fastapi
 fastparquet
 requests
 tqdm
-python-multipart
+python - multipart
 pyarrow
 openpyxl
 xlrd
