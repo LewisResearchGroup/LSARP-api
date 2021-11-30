@@ -1,4 +1,4 @@
-import numpy as np
+    import numpy as np
 import pandas as pd
 
 
@@ -42,3 +42,8 @@ def get_element(x):
         return x
     else:
         return x
+
+
+def key_func_SIRN(x):
+    mapping = {"S": 0, "I": 1, "R": 2, "N": 3}
+    return pd.Index(pd.Series(x).replace(mapping))
