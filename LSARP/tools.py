@@ -48,7 +48,7 @@ def add_date_features_from_datetime_col(df, date_col_name):
     assert df[date_col_name].dtype
     df.loc[:, 'YEAR'] = df[date_col_name].dt.year
     df.loc[:, 'MONTH'] = df[date_col_name].dt.month
-    df.loc[:, 'WEEK'] = df[date_col_name].dt.week
+    df.loc[:, 'WEEK'] = df[date_col_name].dt.isocalender().week
     df.loc[:, 'DAY'] = df[date_col_name].dt.day
     df.loc[:, 'DAYOFYEAR'] = df[date_col_name].dt.dayofyear    
     df.loc[:, 'DATE'] = df[date_col_name].dt.date
