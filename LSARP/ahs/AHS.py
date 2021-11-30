@@ -22,7 +22,7 @@ def get_accs():
     df["DISTIME"] = pd.to_datetime(
         df["DISTIME"], format="%H%M", errors="coerce"
     ).dt.time
-    df = df.rename(columns={"SEX": "GENDER"})
+    df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
     return df
 
@@ -34,6 +34,7 @@ def get_claims():
     )
     df["SE_END_DATE"] = convert_datetime(df["SE_END_DATE"])
     df["SE_START_DATE"] = convert_datetime(df["SE_START_DATE"])
+    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
     return df
 
 
@@ -48,7 +49,7 @@ def get_dad():
     df["DISTIME"] = pd.to_datetime(
         df["DISTIME"], format="%H%M", errors="coerce"
     ).dt.time
-    df = df.rename(columns={"SEX": "GENDER"})
+    df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
     return df
 
@@ -56,6 +57,7 @@ def get_dad():
 def get_lab():
     fn = "RMT24154_PIM_LAB_DE_IDENT.csv"
     df = pd.read_csv(f"{DPATH/fn}", low_memory=False)
+    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
     df["TEST_VRFY_DTTM"] = convert_datetime(df["TEST_VRFY_DTTM"])
     return df
 
@@ -78,7 +80,7 @@ def get_nacrs():
     ).dt.time
     for col in ["VISIT_LOS_MINUTES", "EIP_MINUTES", "ED_ER_MINUTES", "AGE_ADMIT"]:
         df[col] = df[col].astype(float)
-    df = df.rename(columns={"SEX": "GENDER"})
+    df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
     return df
 
@@ -89,7 +91,7 @@ def get_pin():
     df["DSPN_DATE"] = convert_datetime(df["DSPN_DATE"])
     for col in ["DSPN_AMT_QTY", "DSPN_DAY_SUPPLY_QTY"]:
         df[col] = df[col].astype(float)
-    df = df.rename(columns={"RCPT_GENDER_CD": "GENDER"})
+    df = df.rename(columns={"RCPT_GENDER_CD": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
     atc = pd.read_csv("/bulk/LSARP/datasets/ATC-codes/ATC_small.csv")
     atc["DRUG_LABEL"] = atc.DRUG_LABEL.str.capitalize()
@@ -110,7 +112,7 @@ def get_reg():
         "OUT_MIGRATION_IND",
     ]:
         df[col] = df[col].astype(float)
-    df = df.rename(columns={"SEX": "GENDER"})
+    df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
     return df
 
@@ -119,7 +121,7 @@ def get_vs():
     fn = "RMT24154_PIM_VS_DE_IDENT.csv"
     df = pd.read_csv(f"{DPATH/fn}", low_memory=False, dtype=str)
     df["DETHDATE"] = convert_datetime(df["DETHDATE"])
-    df = df.rename(columns={"SEX": "GENDER", "DETHDATE": "DEATH_DATE"})
+    df = df.rename(columns={"SEX": "GENDER", "DETHDATE": "DEATH_DATE", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
     df["AGE"] = df["AGE"].astype(int)
     return df

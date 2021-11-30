@@ -271,4 +271,6 @@ class APL:
         )
         return df
 
-    
+    @property
+    def pid_bi_nbr(self):
+        return self.cultures[['PID', 'BI_NBR']].dropna().drop_duplicates().reset_index(drop=True)    
