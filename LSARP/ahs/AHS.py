@@ -166,6 +166,8 @@ class AHS:
     vs = get_vs()
     atc = get_atc()
     pop = get_population()
+ 
+    antibiotics_names = pin[pin.SUPP_DRUG_ATC_CODE.fillna('').str.match('^J01')].DRUG_LABEL.unique()
 
     def __init__(self):
         pass
@@ -174,7 +176,7 @@ class AHS:
     def drug_by_bi_nbr(self):
         return (
             pd.pivot_table(
-                data=self.pin, index="ISOLATE_NBR", columns="DRUG_LABEL", aggfunc="sum"
+                data=self.pin, index="BI_NBR", columns="DRUG_LABEL", aggfunc="sum"
             )
             .fillna(0)
             .astype(int)
@@ -189,3 +191,4 @@ class AHS:
         self.pin = self.pin[self.pin.ISOLATE_NBR.isin(isolate_nbrs)].copy()
         self.reg = self.reg[self.reg.ISOLATE_NBR.isin(isolate_nbrs)].copy()
         self.vs = self.vs[self.vs.ISOLATE_NBR.isin(isolate_nbrs)].copy()
+

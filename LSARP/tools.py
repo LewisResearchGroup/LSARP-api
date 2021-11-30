@@ -66,10 +66,10 @@ def add_date_features_from_datetime_col(df, date_col_name, numeric=False, add_pr
         df.loc[:, f'{prefix}YEAR_QUARTER'] = df.YEAR +\
             df.QUARTER.apply(lambda x: (x-1)/4)
     else:
-        df.loc[:, f'{prefix}YEAR_DAY'] = df.YEAR + '-' + df.DAYOFYEAR
-        df.loc[:, f'{prefix}YEAR_WEEK'] = df.YEAR + '-' + df.WEEK
-        df.loc[:, f'{prefix}YEAR_MONTH'] = df.YEAR + '-' + df.MONTH
-        df.loc[:, f'{prefix}YEAR_QUARTER'] = df.YEAR + '-' + df.QUARTER      
+        df.loc[:, f'{prefix}YEAR_DAY'] = df.YEAR.astype(str) + '-' + df.DAYOFYEAR.astype(str)
+        df.loc[:, f'{prefix}YEAR_WEEK'] = df.YEAR.astype(str) + '-' + df.WEEK.astype(str)
+        df.loc[:, f'{prefix}YEAR_MONTH'] = df.YEAR.astype(str) + '-' + df.MONTH.astype(str)
+        df.loc[:, f'{prefix}YEAR_QUARTER'] = df.YEAR.astype(str) + '-' + df.QUARTER.astype(str)
 
 
 def sort_df_by_row_count(df, axis=1):
