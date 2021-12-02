@@ -63,7 +63,7 @@ def add_date_features_from_datetime_col(
     df.loc[:, f"{prefix}QUARTER"] = df[date_col_name].dt.quarter
 
 
-    df.loc[:, f"{prefix}TRIMESTER"] = df.loc[:,  f"{prefix}MONTH"].apply(month_to_trimester)
+    df.loc[:, f"{prefix}TRIMESTER"] = df.loc[:,  f"{prefix}MONTH"].replace(month_to_trimester)
 
 
     if numeric:
