@@ -15,8 +15,9 @@ def load_apl_data(years=None):
     df = df[df["NAGE_YR"] < 110]
     df = df[df.ENCNTR_ADMIT_DTM.dt.year > 2000]
     df = df[df.ENCNTR_ADMIT_DTM.dt.year < 2022]
+    df['NTH_YEAR'] = df.COLLECT_DTM.dt.year - df.ENCNTR_ADMIT_DTM.dt.year
     df["AGE_GRP"] = df["NAGE_YR"].apply(age_to_age_group)
-    df["ORGANISM"] = df["ORGANISM"].replace({"MRSA": "SA", "MSSA": "SA"})
+    df["ORGANISM"] = df["ORGANISM"].replace({"MRSA": "SA", "MSSA": "SA", "SA1": "SA"})
     add_date_features_from_datetime_col(df, "ENCNTR_ADMIT_DTM")
     if years is not None:
         df = df[df.YEAR.astype(int).isin(years)]
@@ -279,3 +280,4 @@ class APL:
             .drop_duplicates()
             .reset_index(drop=True)
         )
+

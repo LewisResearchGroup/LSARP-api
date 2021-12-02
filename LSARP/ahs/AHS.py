@@ -6,6 +6,7 @@ DPATH = P("/bulk/LSARP/datasets/AHS_data")
 gender_map = {"M": "Male", "F": "Female"}
 
 
+
 def convert_datetime(x):
     return pd.to_datetime(x, format="%d%b%Y:%H:%M:%S", errors="coerce")
 
@@ -166,8 +167,10 @@ class AHS:
     vs = get_vs()
     atc = get_atc()
     pop = get_population()
- 
-    antibiotics_names = pin[pin.SUPP_DRUG_ATC_CODE.fillna('').str.match('^J01')].DRUG_LABEL.unique()
+
+    antibiotics_names = pin[
+        pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
+    ].DRUG_LABEL.unique()
 
     def __init__(self):
         pass
@@ -183,12 +186,14 @@ class AHS:
         )
 
     def select_isolate_numbers(self, isolate_nbrs):
-        self.accs = self.accs[self.accs.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.claims = self.claims[self.claims.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.dad = self.dad[self.dad.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.lab = self.lab[self.lab.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.narcs = self.narcs[self.narcs.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.pin = self.pin[self.pin.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.reg = self.reg[self.reg.ISOLATE_NBR.isin(isolate_nbrs)].copy()
-        self.vs = self.vs[self.vs.ISOLATE_NBR.isin(isolate_nbrs)].copy()
+        self.accs = self.accs[self.accs.BI_NBR.isin(isolate_nbrs)].copy()
+        self.claims = self.claims[self.claims.BI_NBR.isin(isolate_nbrs)].copy()
+        self.dad = self.dad[self.dad.BI_NBR.isin(isolate_nbrs)].copy()
+        self.lab = self.lab[self.lab.BI_NBR.isin(isolate_nbrs)].copy()
+        self.narcs = self.narcs[self.narcs.BI_NBR.isin(isolate_nbrs)].copy()
+        self.pin = self.pin[self.pin.BI_NBR.isin(isolate_nbrs)].copy()
+        self.reg = self.reg[self.reg.BI_NBR.isin(isolate_nbrs)].copy()
+        self.vs = self.vs[self.vs.BI_NBR.isin(isolate_nbrs)].copy()
 
+
+    
