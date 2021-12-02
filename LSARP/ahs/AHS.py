@@ -1,3 +1,4 @@
+import functools
 import pandas as pd
 from pathlib import Path as P
 
@@ -6,17 +7,36 @@ DPATH = P("/bulk/LSARP/datasets/AHS_data")
 gender_map = {"M": "Male", "F": "Female"}
 
 
+def csv_parquet(fn):
+    """
+    Decorator that  file
+    """
+    fn = P(fn).with_suffix(".csv")
+    fnpq = fn.with_suffix(".parquet")
+
+    def parquet_or_generate_parquet_from_csv(func):
+        @functools.wraps(func)
+        def wrapper():
+            if fnpq.is_file():
+                return pd.read_parquet(fnpq)
+            else:
+                df = func(fn)
+                df.to_parquet(fnpq)
+                return df
+
+        return wrapper
+
+    return parquet_or_generate_parquet_from_csv
+
 
 def convert_datetime(x):
     return pd.to_datetime(x, format="%d%b%Y:%H:%M:%S", errors="coerce")
 
 
-def get_accs():
-    fn = "RMT24154_PIM_ACCS_DE_IDENT.csv"
+@csv_parquet(fn=DPATH / "RMT24154_PIM_ACCS_DE_IDENT.csv")
+def get_accs(fn):
     df = pd.read_csv(
-        f"{DPATH/fn}",
-        low_memory=False,
-        dtype={"VISDATE": str, "DISDATE": str, "DISTIME": str},
+        fn, low_memory=False, dtype={"VISDATE": str, "DISDATE": str, "DISTIME": str},
     )
     df["VISDATE"] = pd.to_datetime(df["VISDATE"], format="%Y%m%d", errors="coerce")
     df["DISDATE"] = pd.to_datetime(df["DISDATE"], format="%Y%m%d", errors="coerce")
@@ -28,10 +48,10 @@ def get_accs():
     return df
 
 
-def get_claims():
-    fn = "RMT24154_PIM_CLAIMS_DE_IDENT.csv"
+@csv_parquet(fn=DPATH / "RMT24154_PIM_ACCS_DE_IDENT.csv")
+def get_claims(fn):
     df = pd.read_csv(
-        f"{DPATH/fn}", low_memory=False, dtype={"DISDATE": str, "DISTIME": str}
+        fn.with_suffix(".csv"), low_memory=False, dtype={"DISDATE": str, "DISTIME": str}
     )
     df["SE_END_DATE"] = convert_datetime(df["SE_END_DATE"])
     df["SE_START_DATE"] = convert_datetime(df["SE_START_DATE"])
@@ -39,9 +59,9 @@ def get_claims():
     return df
 
 
-def get_dad():
-    fn = "RMT24154_PIM_DAD_DE_IDENT.csv"
-    df = pd.read_csv(f"{DPATH/fn}", low_memory=False)
+@csv_parquet(fn=DPATH / "RMT24154_PIM_DAD_DE_IDENT.csv")
+def get_dad(fn):
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
     df["ADMITDATE"] = pd.to_datetime(df["ADMITDATE"], format="%Y%m%d", errors="coerce")
     df["DISDATE"] = pd.to_datetime(df["DISDATE"], format="%Y%m%d", errors="coerce")
     df["ADMITTIME"] = pd.to_datetime(
@@ -55,17 +75,17 @@ def get_dad():
     return df
 
 
-def get_lab():
-    fn = "RMT24154_PIM_LAB_DE_IDENT.csv"
-    df = pd.read_csv(f"{DPATH/fn}", low_memory=False)
+@csv_parquet(fn=DPATH / "RMT24154_PIM_DAD_DE_IDENT.csv")
+def get_lab(fn):
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
     df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
     df["TEST_VRFY_DTTM"] = convert_datetime(df["TEST_VRFY_DTTM"])
     return df
 
 
-def get_nacrs():
-    fn = "RMT24154_PIM_NACRS_DE_IDENT.csv"
-    df = pd.read_csv(f"{DPATH/fn}", low_memory=False, dtype=str)
+@csv_parquet(fn=DPATH / "RMT24154_PIM_NACRS_DE_IDENT.csv")
+def get_nacrs(fn):
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["VISIT_DATE"] = pd.to_datetime(
         df["VISIT_DATE"], format="%Y%m%d", errors="coerce"
     )
@@ -86,9 +106,9 @@ def get_nacrs():
     return df
 
 
-def get_pin():
-    fn = "RMT24154_PIM_PIN_DE_IDENT.csv"
-    df = pd.read_csv(f"{DPATH/fn}", low_memory=False, dtype=str)
+@csv_parquet(fn=DPATH / "RMT24154_PIM_PIN_DE_IDENT.csv")
+def get_pin(fn):
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["DSPN_DATE"] = convert_datetime(df["DSPN_DATE"])
     for col in ["DSPN_AMT_QTY", "DSPN_DAY_SUPPLY_QTY"]:
         df[col] = df[col].astype(float)
@@ -100,9 +120,9 @@ def get_pin():
     return df
 
 
-def get_reg():
-    fn = "RMT24154_PIM_REGISTRY_DE_IDENT.csv"
-    df = pd.read_csv(f"{DPATH/fn}", low_memory=False, dtype=str)
+@csv_parquet(fn=DPATH / "RMT24154_PIM_REGISTRY_DE_IDENT.csv")
+def get_reg(fn):
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["PERS_REAP_END_DATE"] = convert_datetime(df["PERS_REAP_END_DATE"])
     for col in [
         "ACTIVE_COVERAGE",
@@ -118,9 +138,9 @@ def get_reg():
     return df
 
 
-def get_vs():
-    fn = "RMT24154_PIM_VS_DE_IDENT.csv"
-    df = pd.read_csv(f"{DPATH/fn}", low_memory=False, dtype=str)
+@csv_parquet(fn=DPATH / "RMT24154_PIM_VS_DE_IDENT.csv")
+def get_vs(fn):
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["DETHDATE"] = convert_datetime(df["DETHDATE"])
     df = df.rename(
         columns={"SEX": "GENDER", "DETHDATE": "DEATH_DATE", "ISOLATE_NBR": "BI_NBR"}
@@ -130,16 +150,18 @@ def get_vs():
     return df
 
 
-def get_atc():
-    df = pd.read_csv("/bulk/LSARP/datasets/ATC-codes/ATC_small.csv")
+@csv_parquet(fn="/bulk/LSARP/datasets/ATC-codes/ATC_small.csv")
+def get_atc(fn):
+    df = pd.read_csv(fn)
     df["DRUG_LABEL"] = df.DRUG_LABEL.str.capitalize()
     return df
 
 
-def get_population():
-    df = pd.read_csv(
-        "/bulk/LSARP/datasets/211109-sw__Calgary-Population-Estimates/211109-sw__Interpolated-Monthly-Population-Calgary.csv"
-    )
+@csv_parquet(
+    fn="/bulk/LSARP/datasets/211109-sw__Calgary-Population-Estimates/211109-sw__Interpolated-Monthly-Population-Calgary.csv"
+)
+def get_population(fn):
+    df = pd.read_csv(fn)
     return df
 
 
@@ -194,6 +216,3 @@ class AHS:
         self.pin = self.pin[self.pin.BI_NBR.isin(isolate_nbrs)].copy()
         self.reg = self.reg[self.reg.BI_NBR.isin(isolate_nbrs)].copy()
         self.vs = self.vs[self.vs.BI_NBR.isin(isolate_nbrs)].copy()
-
-
-    

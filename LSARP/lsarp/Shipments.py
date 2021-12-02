@@ -32,8 +32,7 @@ class Shipments:
         return self
 
     def put(
-        self,
-        fn=None,
+        self, fn=None,
     ):
         df = self._df
         Id = self._plate_id
