@@ -84,10 +84,10 @@ def format_shipment(df):
         )
 
         try:
-            df["RPT"] = df.PLATE.apply(lambda x: x.split("-")[1])
+            df["RPT"] = df.PLATE.str.replace('_RPT', '-R1').apply(lambda x: x.split("-")[1])
         except:
             df["RPT"] = "R0"
-        df["PLATE_SETUP"] = df.PLATE.apply(lambda x: x.split("-")[0])
+        df["PLATE_SETUP"] = df.PLATE.apply(lambda x: x.split("-")[0]).replace('_RPT', '')
 
     cols = [
         "DATE_SHIPPED",
