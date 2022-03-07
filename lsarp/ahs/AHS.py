@@ -179,23 +179,23 @@ class AHS:
     vs - Vital Statistics-Death
     """
 
-    accs = get_accs()
-    claims = get_claims()
-    dad = get_dad()
-    lab = get_lab()
-    narcs = get_nacrs()
-    pin = get_pin()
-    reg = get_reg()
-    vs = get_vs()
-    atc = get_atc()
-    pop = get_population()
-
-    antibiotics_names = pin[
-        pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
-    ].DRUG_LABEL.unique()
 
     def __init__(self):
-        pass
+
+        self.accs = get_accs()
+        self.claims = get_claims()
+        self.dad = get_dad()
+        self.lab = get_lab()
+        self.narcs = get_nacrs()
+        self.pin = get_pin()
+        self.reg = get_reg()
+        self.vs = get_vs()
+        self.atc = get_atc()
+        self.pop = get_population()
+
+        self.antibiotics_names = self.pin[
+            self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
+        ].DRUG_LABEL.unique()
 
     @property
     def drug_by_bi_nbr(self):
