@@ -179,7 +179,6 @@ class AHS:
     vs - Vital Statistics-Death
     """
 
-
     def __init__(self):
 
         self.accs = get_accs()

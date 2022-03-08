@@ -60,7 +60,8 @@ def format_morph(df):
         df = df[cols]
     return df
 
-remove_digits = lambda x: ''.join([i for i in x if not i.isdigit()])
+
+remove_digits = lambda x: "".join([i for i in x if not i.isdigit()])
 
 
 def format_shipment(df):
@@ -86,10 +87,14 @@ def format_shipment(df):
         )
 
         try:
-            df["RPT"] = df.PLATE.str.replace('_RPT', '-R1').apply(lambda x: x.split("-")[1])
+            df["RPT"] = df.PLATE.str.replace("_RPT", "-R1").apply(
+                lambda x: x.split("-")[1]
+            )
         except:
             df["RPT"] = "R0"
-        df["PLATE_SETUP"] = df.PLATE.apply(lambda x: x.split("-")[0]).replace('_RPT', '')
+        df["PLATE_SETUP"] = df.PLATE.apply(lambda x: x.split("-")[0]).replace(
+            "_RPT", ""
+        )
 
     cols = [
         "DATE_SHIPPED",
@@ -101,11 +106,11 @@ def format_shipment(df):
         "ORGANISM",
         "ISOLATE_NBR",
         "BI_NBR",
-        "ORGANISM_ORIG"
+        "ORGANISM_ORIG",
     ]
 
-    df['BI_NBR'] = [i  if i.startswith('BI') else None for i in df.ISOLATE_NBR]
-    
+    df["BI_NBR"] = [i if i.startswith("BI") else None for i in df.ISOLATE_NBR]
+
     df["ORGANISM_ORIG"] = df["ORGANISM"].copy()
     df["ORGANISM"] = df["ORGANISM"].apply(standardize_organism)
 
@@ -113,27 +118,37 @@ def format_shipment(df):
 
 
 def standardize_organism(x):
-    x = str(x).replace('#', '')
+    x = str(x).replace("#", "")
     replacements = {
-        'MSSA': 'SA',
-        'MRSA': 'SA',
-        'VRE faem': 'ENTFAEM',
-        'EFAECALI': 'ENTFAES'  
+        "MSSA": "SA",
+        "MRSA": "SA",
+        "VRE faem": "ENTFAEM",
+        "EFAECALI": "ENTFAES",
     }
     x = remove_digits(x)
     x = replacements[x] if x in replacements.keys() else x
     return x
 
+
 def read_shipment(fn):
-    df = format_shipment(pd.read_excel(fn))
-    df['SHIPMENT_FILE'] = P(fn).name
+    try:
+        df = format_shipment(pd.read_excel(fn))
+    except Exception as e:
+        logging.error(f"Cannot process file {fn}:\n e")
+    df["SHIPMENT_FILE"] = P(fn).name
     return df
 
+
 def get_all_shipments(path):
-    fns = glob(str(P(path)/'*Shipment*xlsx'))
-    fns = [i for i in fns if '$' not in i]
-    shipments = pd.concat([read_shipment(fn) for fn in fns]).sort_values(['DATE_SHIPPED', 'PLATE', 'RPT', 'PLATE_COL', 'PLATE_ROW']).reset_index(drop=True)   
-    return shipments     
+    fns = glob(str(P(path) / "*Shipment*xlsx"))
+    fns = [i for i in fns if "$" not in i]
+    shipments = (
+        pd.concat([read_shipment(fn) for fn in fns])
+        .sort_values(["DATE_SHIPPED", "PLATE", "RPT", "PLATE_COL", "PLATE_ROW"])
+        .reset_index(drop=True)
+    )
+    return shipments
+
 
 def check_shipment(df):
     expected_cols = [

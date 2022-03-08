@@ -3,11 +3,11 @@ from ..tools import age_to_age_group, add_date_features_from_datetime_col
 from .helpers import replace_interp, get_element, key_func_SIRN
 
 
-DPATH = "/bulk/LSARP/datasets/apl"
+DPATH = "/bulk/LSARP/datasets/APL"
 
 
 def load_apl_data(years=None):
-    df = pd.read_parquet(f"{DPATH}/APL-latest.parquet")
+    df = pd.read_parquet(f"{DPATH}/220307-sw__APL.parquet")
     df = df[~df.CURRENT_PT_FACILITY.isin(["UAH"])]
     df = df[~df.CURRENT_PT_LOCN.fillna("").str.contains("Edmon")]
     df["YEAR"] = df.COLLECT_DTM.dt.year
@@ -88,7 +88,12 @@ class APL:
     def __init__(self, organisms=None, years=None, bi_nbrs=None):
         df = load_apl_data(years=years)
         self.df = df
-        self.antibiotics = pd.read_csv(f"{DPATH}/antibiotics-list.csv")
+        self.drugs = pd.read_excel(
+            "/bulk/LSARP/datasets/LSARP-drugs/220304-sw__LSARP-drugs.xlsx"
+        )
+        self.organisms = pd.read_excel(
+            "/bulk/LSARP/datasets/LSARP-organisms/220307-sw__LSARP-organisms.xlsx"
+        )
         self.encounters = gen_encounters(df)
         self.cultures = gen_cultures(df)
         self.bi_info = gen_bi_info(df)
@@ -98,7 +103,7 @@ class APL:
 
         if organisms is not None:
             self.select_samples(organisms=organisms, bi_nbrs=bi_nbrs)
-        self.results = self.generate_results()
+        # self.results = self.generate_results()
         self.key_func_SIRN = key_func_SIRN
 
     def select_samples(self, organisms=None, bi_nbrs=None):
@@ -137,9 +142,9 @@ class APL:
         summary_data = (
             pd.Series(
                 {
-                    "Encounters": self.n_encounters,
-                    "Patients": self.n_patients,
-                    "BI nbrs": self.n_bi_nbrs,
+                    "# Encounters": self.n_encounters,
+                    "# Patients": self.n_patients,
+                    "# BI numbers": self.n_bi_nbrs,
                 }
             )
             .to_frame()
@@ -198,33 +203,44 @@ class APL:
 
     def generate_results(
         self,
-        results_columns=["INTERP"],
-        antibiotics_columns=["ANTIBIOTIC_ABBR"],
-        index_columns=[
+        values=["INTERP"],
+        columns=["DRUG_ABBR"],
+        index=[
             "BI_NBR",
             "ORGANISM",
+            "ORG_LONG_NAME",
+            "ORG_GENUS",
+            "ORG_SPECIES",
+            "ORG_GRAM_TYPE",
             "YEAR",
             "PID",
             "AGE_GRP",
             "NAGE_YR",
             "GENDER",
             "CULT_ID",
+            "STRAIN_ID",
             "CURRENT_PT_FACILITY",
             "ENCNTR_ADMIT_DTM",
             "COLLECT_DTM",
             "CULT_START_DTM",
             "DSCHG_DTM",
+            "DAY",
+            "DAYOFYEAR",
+            "DATE",
+            "QUARTER",
+            "TRIMESTER",
+            "YEAR_DAY",
+            "YEAR_WEEK",
+            "YEAR_MONTH",
+            "YEAR_QUARTER",
+            "YEAR_TRIMESTER",
         ],
         organisms=None,
-        only_antibiotics=True,
     ):
 
         apl_df = self.df.copy()
 
-        apl_df["IS_ANTIBIOTIC"] = apl_df["IS_ANTIBIOTIC"].astype(bool)
-
-        if only_antibiotics:
-            apl_df = apl_df[apl_df.IS_ANTIBIOTIC]
+        apl_df = apl_df[apl_df["DRUG"].notna()]
 
         if organisms is not None:
             apl_df = apl_df[apl_df.ORGANISM.isin(organisms)]
@@ -236,11 +252,7 @@ class APL:
         apl_df.BI_NBR = apl_df.BI_NBR.fillna("NA")
 
         data = pd.pivot_table(
-            apl_df,
-            index=index_columns,
-            columns=antibiotics_columns,
-            values=results_columns,
-            aggfunc=list,
+            apl_df, index=index, columns=columns, values=values, aggfunc=list,
         )
 
         for col in data.columns:
@@ -248,7 +260,7 @@ class APL:
 
         data = data.applymap(replace_interp)
 
-        if len(results_columns) == 1:
+        if len(values) == 1:
             data.columns = data.columns.get_level_values(1)
 
         return data.dropna(axis=1, how="all")
