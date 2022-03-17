@@ -1,24 +1,30 @@
 import pandas as pd
+import logging
 from ..tools import age_to_age_group, add_date_features_from_datetime_col
 from .helpers import replace_interp, get_element, key_func_SIRN
-
+import datetime
 
 DPATH = "/bulk/LSARP/datasets/APL"
 
 
-def load_apl_data(years=None):
-    df = pd.read_parquet(f"{DPATH}/220307-sw__APL.parquet")
+def load_apl_data(fn, years=None, datetime_numeric=False):
+    df = pd.read_parquet(fn)
     df = df[~df.CURRENT_PT_FACILITY.isin(["UAH"])]
     df = df[~df.CURRENT_PT_LOCN.fillna("").str.contains("Edmon")]
     df["YEAR"] = df.COLLECT_DTM.dt.year
     df = df[df["GENDER"].isin(["Male", "Female"])]
     df = df[df["NAGE_YR"] < 110]
-    df = df[df.ENCNTR_ADMIT_DTM.dt.year > 2000]
-    df = df[df.ENCNTR_ADMIT_DTM.dt.year < 2022]
+    df = df[df.COLLECT_DTM.dt.year > 2000]
+    df = df[df.COLLECT_DTM.dt.year < 2022]
     df["NTH_YEAR"] = df.COLLECT_DTM.dt.year - df.ENCNTR_ADMIT_DTM.dt.year
     df["AGE_GRP"] = df["NAGE_YR"].apply(age_to_age_group)
-    df["ORGANISM"] = df["ORGANISM"].replace({"MRSA": "SA", "MSSA": "SA", "SA1": "SA"})
-    add_date_features_from_datetime_col(df, "ENCNTR_ADMIT_DTM")
+    df["COLLECT_HOURS_AFTER_ADMIT"] = (df.COLLECT_DTM - df.ENCNTR_ADMIT_DTM).astype(
+        "timedelta64[h]"
+    )
+    df['INTERP'] = df['INTERP'].fillna('N')
+    df["FLAG_COLLECT_24h_BEFORE_ADMIT"] = df["COLLECT_HOURS_AFTER_ADMIT"] < 24
+    df["HOSPITAL_ACQUIRED"] = df["COLLECT_HOURS_AFTER_ADMIT"] > 48
+    add_date_features_from_datetime_col(df, "COLLECT_DTM", numeric=datetime_numeric)
     if years is not None:
         df = df[df.YEAR.astype(int).isin(years)]
     return df
@@ -85,14 +91,22 @@ def gen_bi_info(df):
 
 
 class APL:
-    def __init__(self, organisms=None, years=None, bi_nbrs=None):
-        df = load_apl_data(years=years)
+    def __init__(
+        self,
+        fn=f"{DPATH}/220307-sw__APL.parquet",
+        organisms=None,
+        years=None,
+        bi_nbrs=None,
+        datetime_numeric=False
+    ):
+        df = load_apl_data(fn=fn, years=years, datetime_numeric=datetime_numeric)
         self.df = df
-        self.drugs = pd.read_excel(
-            "/bulk/LSARP/datasets/LSARP-drugs/220304-sw__LSARP-drugs.xlsx"
-        )
-        self.organisms = pd.read_excel(
-            "/bulk/LSARP/datasets/LSARP-organisms/220307-sw__LSARP-organisms.xlsx"
+        self.drugs = df.filter(regex="DRUG").drop_duplicates().dropna(how='all').reset_index(drop=True)
+        self.organisms = (
+            df.filter(regex="ORG")
+            .drop_duplicates()
+            .sort_values("ORG_LONG_NAME")
+            .reset_index(drop=True)
         )
         self.encounters = gen_encounters(df)
         self.cultures = gen_cultures(df)
@@ -101,9 +115,11 @@ class APL:
         tmp = df[["ORD_ENCNTR_NBR", "CURRENT_PT_FACILITY", "YEAR"]].drop_duplicates()
         self.total_counts_facility = pd.crosstab(tmp.CURRENT_PT_FACILITY, tmp.YEAR)
 
-        if organisms is not None:
+        if isinstance(organisms, str):
+            organisms = [organisms]
+        if (organisms is not None) or (bi_nbrs is not None):
             self.select_samples(organisms=organisms, bi_nbrs=bi_nbrs)
-        # self.results = self.generate_results()
+        # self.results = self.gen_results()
         self.key_func_SIRN = key_func_SIRN
 
     def select_samples(self, organisms=None, bi_nbrs=None):
@@ -128,7 +144,7 @@ class APL:
         self.bi_info = self.bi_info[self.bi_info.BI_NBR.isin(bi_nbrs)].reset_index(
             drop=True
         )
-        self.results = self.generate_results()
+        # self.results = self.gen_results()
 
     @property
     def summary(self):
@@ -201,10 +217,10 @@ class APL:
         ]
         return annual_counts_by_org
 
-    def generate_results(
+    def gen_results(
         self,
         values=["INTERP"],
-        columns=["DRUG_ABBR"],
+        columns=["DRUG"],
         index=[
             "BI_NBR",
             "ORGANISM",
@@ -217,6 +233,8 @@ class APL:
             "AGE_GRP",
             "NAGE_YR",
             "GENDER",
+            "ORD_ENCNTR_TYPE",
+            "ENCR_GRP",
             "CULT_ID",
             "STRAIN_ID",
             "CURRENT_PT_FACILITY",
@@ -225,6 +243,7 @@ class APL:
             "CULT_START_DTM",
             "DSCHG_DTM",
             "DAY",
+            "DAYOFWEEK",
             "DAYOFYEAR",
             "DATE",
             "QUARTER",
@@ -234,9 +253,15 @@ class APL:
             "YEAR_MONTH",
             "YEAR_QUARTER",
             "YEAR_TRIMESTER",
+            "HOSPITAL_ACQUIRED",
+            "COLLECT_HOURS_AFTER_ADMIT",
+            "FLAG_COLLECT_24h_BEFORE_ADMIT",
         ],
         organisms=None,
     ):
+
+        if isinstance(organisms, str):
+            organisms = [organisms]
 
         apl_df = self.df.copy()
 
@@ -245,15 +270,31 @@ class APL:
         if organisms is not None:
             apl_df = apl_df[apl_df.ORGANISM.isin(organisms)]
 
-        apl_df["INTERP"] = pd.Categorical(
-            apl_df["INTERP"], categories=["S", "I", "R"], ordered=True
-        )
+        apl_df['INTERP'] = apl_df['INTERP'].fillna('N')
+        apl_df["DSCHG_DTM"] = apl_df["DSCHG_DTM"].fillna(datetime.date(1970,1,1))
 
+        #apl_df = apl_df.fillna('NA')
+
+        apl_df["INTERP"] = pd.Categorical(
+            apl_df["INTERP"], categories=["N", "S", "I", "R"], ordered=True
+        )
+        
         apl_df.BI_NBR = apl_df.BI_NBR.fillna("NA")
+
+        missing_values = apl_df[index + columns + values].isna().sum()
+        if missing_values.sum() != 0:
+            missing_values = missing_values.loc[missing_values > 0]
+            logging.warning(
+                f"Selected columns contain missing values.\n{missing_values}"
+            )
 
         data = pd.pivot_table(
             apl_df, index=index, columns=columns, values=values, aggfunc=list,
         )
+
+        index = apl_df[index].drop_duplicates()
+
+        data = data.reindex(index)
 
         for col in data.columns:
             data[col] = data[col].apply(get_element)

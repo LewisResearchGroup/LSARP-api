@@ -66,7 +66,7 @@ def add_date_features_from_datetime_col(
         month_to_trimester
     )
 
-    if numeric:
+    if numeric is True:
         df.loc[:, f"{prefix}YEAR_DAY"] = df.YEAR + df[f"{prefix}DAYOFYEAR"].apply(
             lambda x: (x - 1) / 365
         )
@@ -82,15 +82,15 @@ def add_date_features_from_datetime_col(
         df.loc[:, f"{prefix}YEAR_TRIMESTER"] = df.YEAR + df[f"{prefix}TRIMESTER"].apply(
             lambda x: (x - 1) / 3
         )
-    else:
+    elif numeric is False:
         df.loc[:, f"{prefix}YEAR_DAY"] = (
-            df.YEAR.astype(str) + "-" + df.DAYOFYEAR.astype(str)
+            df.YEAR.astype(str) + "-" + df.DAYOFYEAR.map("{:03.0f}".format)
         )
         df.loc[:, f"{prefix}YEAR_WEEK"] = (
-            df.YEAR.astype(str) + "-" + df.WEEK.astype(str)
+            df.YEAR.astype(str) + "-" + df.WEEK.map("{:02.0f}".format)
         )
         df.loc[:, f"{prefix}YEAR_MONTH"] = (
-            df.YEAR.astype(str) + "-" + df.MONTH.astype(str)
+            df.YEAR.astype(str) + "-" + df.MONTH.map("{:02.0f}".format)
         )
         df.loc[:, f"{prefix}YEAR_QUARTER"] = (
             df.YEAR.astype(str) + "-" + df.QUARTER.astype(str)
@@ -98,6 +98,19 @@ def add_date_features_from_datetime_col(
         df.loc[:, f"{prefix}YEAR_TRIMESTER"] = (
             df.YEAR.astype(str) + "-" + df.TRIMESTER.astype(str)
         )
+    elif numeric == 'mixed':
+        df.loc[:, f"{prefix}YEAR_WEEK"] = df.YEAR + df[f"{prefix}WEEK"].apply(
+            lambda x: (x - 1) / 52
+        )        
+        df.loc[:, f"{prefix}YEAR_MONTH"] = df.YEAR + df[f"{prefix}MONTH"].apply(
+            lambda x: (x - 1) / 12
+        )        
+        df.loc[:, f"{prefix}YEAR_QUARTER"] = df.YEAR + df[f"{prefix}QUARTER"].apply(
+            lambda x: (x - 1) / 4
+        )
+        df.loc[:, f"{prefix}YEAR_TRIMESTER"] = df.YEAR + df[f"{prefix}TRIMESTER"].apply(
+            lambda x: (x - 1) / 3
+        )        
 
 
 def sort_df_by_row_count(df, axis=1, ascending=True):
