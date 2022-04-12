@@ -4,11 +4,13 @@ from . import tools as T
 class LSARP:
     def __init__(
         self,
-        path_shipments="/home/swacker/LSARP/1_Raw_data/Plate-Register/APL-Shipments/Shipments/",
+        path_shipments="/bulk/LSARP/lrg-proc/Plate-Register/APL-Shipments/Shipments",
     ):
         self.path_shipments = path_shipments
         self.shipments = None
-
+        self.load_shipments()
+        
+    
     def load_shipments(self, last_repeat=True):
         self.shipments = T.get_all_shipments(self.path_shipments)
         if last_repeat:

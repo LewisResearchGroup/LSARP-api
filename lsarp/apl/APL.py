@@ -1,13 +1,15 @@
 import pandas as pd
+
 import logging
-from ..tools import age_to_age_group, add_date_features_from_datetime_col
-from .helpers import replace_interp, get_element, key_func_SIRN
 import datetime
 
-DPATH = "/bulk/LSARP/datasets/APL"
+from ..tools import age_to_age_group, add_date_features_from_datetime_col
+from .helpers import replace_interp, get_element, key_func_SIRN
+
+FN = "/bulk/LSARP/datasets/APL/220317/220317-sw__APL.parquet"
 
 
-def load_apl_data(fn, years=None, datetime_numeric=False):
+def load_apl_data(fn=FN, years=None, datetime_numeric=False):
     df = pd.read_parquet(fn)
     df = df[~df.CURRENT_PT_FACILITY.isin(["UAH"])]
     df = df[~df.CURRENT_PT_LOCN.fillna("").str.contains("Edmon")]
@@ -93,12 +95,13 @@ def gen_bi_info(df):
 class APL:
     def __init__(
         self,
-        fn=f"{DPATH}/220307-sw__APL.parquet",
+        fn=FN,
         organisms=None,
         years=None,
         bi_nbrs=None,
         datetime_numeric=False
     ):
+        logging.warning(f'Loading APL data from {fn}')
         df = load_apl_data(fn=fn, years=years, datetime_numeric=datetime_numeric)
         self.df = df
         self.drugs = df.filter(regex="DRUG").drop_duplicates().dropna(how='all').reset_index(drop=True)

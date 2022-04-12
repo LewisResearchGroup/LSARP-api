@@ -2,7 +2,7 @@ import functools
 import pandas as pd
 from pathlib import Path as P
 
-DPATH = P("/bulk/LSARP/datasets/AHS_data")
+DPATH = P("/bulk/LSARP/datasets/AHS")
 
 gender_map = {"M": "Male", "F": "Female"}
 
@@ -114,7 +114,7 @@ def get_pin(fn):
         df[col] = df[col].astype(float)
     df = df.rename(columns={"RCPT_GENDER_CD": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
-    atc = pd.read_csv("/bulk/LSARP/datasets/ATC-codes/ATC_small.csv")
+    atc = get_atc()
     atc["DRUG_LABEL"] = atc.DRUG_LABEL.str.capitalize()
     df = pd.merge(df, atc, how="left")
     return df
@@ -150,7 +150,7 @@ def get_vs(fn):
     return df
 
 
-@csv_parquet(fn="/bulk/LSARP/datasets/ATC-codes/ATC_small.csv")
+@csv_parquet(fn="/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv")
 def get_atc(fn):
     df = pd.read_csv(fn)
     df["DRUG_LABEL"] = df.DRUG_LABEL.str.capitalize()
@@ -190,7 +190,7 @@ class AHS:
         self.reg = get_reg()
         self.vs = get_vs()
         self.atc = get_atc()
-        self.pop = get_population()
+        self.population = get_population()
 
         self.antibiotics_names = self.pin[
             self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
