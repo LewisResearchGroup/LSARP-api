@@ -29,3 +29,26 @@ Depends on `lrg-omics` package [link](https://github.com/LSARP/lrg-omics).
 |  7 | EC001         | A           |          08 | 2021-11-15 00:00:00 | EC001   | R0    | EC         | BI_10_0016    | BI_10_0016 | EC              | EC001_20211115_LSARP_Shipment.xlsx |
 |  8 | EC001         | A           |          09 | 2021-11-15 00:00:00 | EC001   | R0    | EC         | BI_10_0017    | BI_10_0017 | EC              | EC001_20211115_LSARP_Shipment.xlsx |
 |  9 | EC001         | A           |          10 | 2021-11-15 00:00:00 | EC001   | R0    | EC         | BI_10_0020    | BI_10_0020 | EC              | EC001_20211115_LSARP_Shipment.xlsx |
+
+
+### AHS
+
+    from lsarp import AHS
+
+    ahs = AHS()
+
+    ahs?
+
+    Has AHS datasets stored in attributes:
+    -----
+    accs - older version of the NACRS database
+    claims - Practitioner Claims,Physician Claims, Physician Billing
+    dad - Discharge Abstract Database (DAD), Inpatient
+    lab - Provinicial Laboratory(Lab)
+    narcs - National Ambulatory Care Reporting System (NACRS) & Alberta Ambulatory Care Reporting System (AACRS)
+    pin - Pharmaceutical Information Network(PIN)
+    reg - Alberta Health Care Insurance Plan (AHCIP) Registry
+    vs - Vital Statistics-Death
+    
+    
+   
