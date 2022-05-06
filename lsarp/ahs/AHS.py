@@ -2,10 +2,24 @@ import functools
 import pandas as pd
 from pathlib import Path as P
 
-DPATH = P("/bulk/LSARP/datasets/AHS")
 
 gender_map = {"M": "Male", "F": "Female"}
 
+DPATH = P('/bulk/LSARP/datasets/AHS/220506')
+
+FNS = {
+    'accs': 'RMT24154_PIM_ACCS_May2022.csv',
+    'claims': 'RMT24154_PIM_CLAIMS_May2022.csv',
+    'dad': 'RMT24154_PIM_DAD_DE_IDENT.csv',
+    'lab': 'RMT24154_PIM_LAB_May2022.csv',
+    'narcs': 'RMT24154_PIM_NACRS_May2022.csv',
+    'pin': 'RMT24154_PIM_PIN_May2022.csv',
+    'vs': 'RMT24154_PIM_VS_May2022.csv',
+    'reg': 'RMT24154_PIM_REGISTRY_May2022.csv',
+    'dad': 'RMT24154_PIM_DAD_May2022.csv',
+    'atc': '/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv',
+    'pop': '/bulk/LSARP/datasets/211109-sw__Calgary-Population-Estimates/211109-sw__Interpolated-Monthly-Population-Calgary.csv',
+}
 
 def csv_parquet(fn):
     """
@@ -33,7 +47,7 @@ def convert_datetime(x):
     return pd.to_datetime(x, format="%d%b%Y:%H:%M:%S", errors="coerce")
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_ACCS_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['accs'])
 def get_accs(fn):
     df = pd.read_csv(
         fn, low_memory=False, dtype={"VISDATE": str, "DISDATE": str, "DISTIME": str},
@@ -48,7 +62,7 @@ def get_accs(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_ACCS_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['claims'])
 def get_claims(fn):
     df = pd.read_csv(
         fn.with_suffix(".csv"), low_memory=False, dtype={"DISDATE": str, "DISTIME": str}
@@ -59,7 +73,7 @@ def get_claims(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_DAD_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['dad'])
 def get_dad(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
     df["ADMITDATE"] = pd.to_datetime(df["ADMITDATE"], format="%Y%m%d", errors="coerce")
@@ -75,7 +89,7 @@ def get_dad(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_DAD_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['lab'])
 def get_lab(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
     df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
@@ -83,7 +97,7 @@ def get_lab(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_NACRS_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['narcs'])
 def get_nacrs(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["VISIT_DATE"] = pd.to_datetime(
@@ -106,7 +120,7 @@ def get_nacrs(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_PIN_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['pin'])
 def get_pin(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["DSPN_DATE"] = convert_datetime(df["DSPN_DATE"])
@@ -120,7 +134,7 @@ def get_pin(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_REGISTRY_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['reg'])
 def get_reg(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["PERS_REAP_END_DATE"] = convert_datetime(df["PERS_REAP_END_DATE"])
@@ -138,7 +152,7 @@ def get_reg(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / "RMT24154_PIM_VS_DE_IDENT.csv")
+@csv_parquet(fn=DPATH / FNS['vs'])
 def get_vs(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
     df["DETHDATE"] = convert_datetime(df["DETHDATE"])
@@ -150,7 +164,7 @@ def get_vs(fn):
     return df
 
 
-@csv_parquet(fn="/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv")
+@csv_parquet(fn=FNS['atc'])
 def get_atc(fn):
     df = pd.read_csv(fn)
     df["DRUG_LABEL"] = df.DRUG_LABEL.str.capitalize()
@@ -158,7 +172,7 @@ def get_atc(fn):
 
 
 @csv_parquet(
-    fn="/bulk/LSARP/datasets/211109-sw__Calgary-Population-Estimates/211109-sw__Interpolated-Monthly-Population-Calgary.csv"
+    fn=FNS['pop']
 )
 def get_population(fn):
     df = pd.read_csv(fn)
@@ -196,6 +210,17 @@ class AHS:
             self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
         ].DRUG_LABEL.unique()
 
+        self.datasets = dict(
+         accs = self.accs,
+         claims = self.claims,
+         dad = self.dad,
+         lab = self.lab,
+         narcs = self.narcs,
+         pin = self.pin,
+         reg = self.reg,
+         vs = self.vs,
+        )
+        
     @property
     def drug_by_bi_nbr(self):
         return (
@@ -215,3 +240,4 @@ class AHS:
         self.pin = self.pin[self.pin.BI_NBR.isin(isolate_nbrs)].copy()
         self.reg = self.reg[self.reg.BI_NBR.isin(isolate_nbrs)].copy()
         self.vs = self.vs[self.vs.BI_NBR.isin(isolate_nbrs)].copy()
+   
