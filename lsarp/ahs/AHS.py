@@ -19,6 +19,9 @@ FNS = {
     'dad': 'RMT24154_PIM_DAD_May2022.csv',
     'atc': '/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv',
     'pop': '/bulk/LSARP/datasets/211109-sw__Calgary-Population-Estimates/211109-sw__Interpolated-Monthly-Population-Calgary.csv',
+    'postal_codes': '/bulk/LSARP/datasets/221011-sw__postal-code-geographic-regions-from-Wikipedia/221011-sw__postal-code-geographic-regions-from-Wikipedia.csv',
+    'proccodes': '/bulk/LSARP/datasets/AHS/221020-sw__proccodes.parquet',
+    'dxcodes': '/bulk/LSARP/datasets/AHS/221020-sw__dxcodes.parquet',
 }
 
 def csv_parquet(fn):
@@ -70,12 +73,13 @@ def get_claims(fn):
     df["SE_END_DATE"] = convert_datetime(df["SE_END_DATE"])
     df["SE_START_DATE"] = convert_datetime(df["SE_START_DATE"])
     df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
-    return df
+    df = df.sort_values(['BI_NBR', 'SE_START_DATE', 'SE_END_DATE'])
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=DPATH / FNS['dad'])
 def get_dad(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype={"INST": str, "INSTFROM": str, "INSTTO": str})
     df["ADMITDATE"] = pd.to_datetime(df["ADMITDATE"], format="%Y%m%d", errors="coerce")
     df["DISDATE"] = pd.to_datetime(df["DISDATE"], format="%Y%m%d", errors="coerce")
     df["ADMITTIME"] = pd.to_datetime(
@@ -86,7 +90,12 @@ def get_dad(fn):
     ).dt.time
     df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
-    return df
+    drop_columns = df.filter(regex='DXCODE|DXTYPE|PROCCODE').columns.to_list()
+    df['DXCODES'] = df.filter(regex='DXCODE').apply(lambda x: [e for e in x if e is not None], axis=1)
+    df['PROCCODES'] = df.filter(regex='PROCCODE').apply(lambda x: [e for e in x if e is not None], axis=1)
+    df = df.drop(drop_columns, axis=1)
+    df = df.rename(columns={'Post_code': 'POSTCODE'})
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=DPATH / FNS['lab'])
@@ -94,7 +103,7 @@ def get_lab(fn):
     df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
     df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
     df["TEST_VRFY_DTTM"] = convert_datetime(df["TEST_VRFY_DTTM"])
-    return df
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=DPATH / FNS['narcs'])
@@ -117,7 +126,7 @@ def get_nacrs(fn):
         df[col] = df[col].astype(float)
     df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
-    return df
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=DPATH / FNS['pin'])
@@ -131,7 +140,7 @@ def get_pin(fn):
     atc = get_atc()
     atc["DRUG_LABEL"] = atc.DRUG_LABEL.str.capitalize()
     df = pd.merge(df, atc, how="left")
-    return df
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=DPATH / FNS['reg'])
@@ -146,10 +155,10 @@ def get_reg(fn):
         "IN_MIGRATION_IND",
         "OUT_MIGRATION_IND",
     ]:
-        df[col] = df[col].astype(float)
-    df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
-    df["GENDER"] = df["GENDER"].replace(gender_map)
-    return df
+        df[col] = df[col].astype(int)
+    df = df.drop(['SEX', 'AGE_GRP_CD'], axis=1)
+    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR", "Post_code": "POSTCODE"})
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=DPATH / FNS['vs'])
@@ -161,7 +170,8 @@ def get_vs(fn):
     )
     df["GENDER"] = df["GENDER"].replace(gender_map)
     df["AGE"] = df["AGE"].astype(int)
-    return df
+    df = df.rename(columns={'Post_code': 'POSTCODE'})
+    return df.set_index('BI_NBR')
 
 
 @csv_parquet(fn=FNS['atc'])
@@ -170,6 +180,10 @@ def get_atc(fn):
     df["DRUG_LABEL"] = df.DRUG_LABEL.str.capitalize()
     return df
 
+
+@csv_parquet(fn=FNS['postal_codes'])
+def get_postal_codes(fn):
+    return pd.read_csv(fn)
 
 @csv_parquet(
     fn=FNS['pop']
@@ -184,13 +198,97 @@ class AHS:
     Has AHS datasets stored in attributes:
     -----
     accs - older version of the NACRS database
+    
     claims - Practitioner Claims,Physician Claims, Physician Billing
+         * FRE_ACTUAL_PAID_AMT - Financial Resource Event Actual Paid Amount
+         * HLTH_DX_ICD9X_CODE - Diagnosis Code
+         * HLTH_SRVC_CCPX_CODE - Health Service Canadian Classification of Procedures Extended Code
+         * PGM_APP_IND - Program Alternate Payment Plan Indicator
+         * RCPT_AGE_SE_END_YRS - Recipient Years of Age at Service Event End Date
+         * RCPT_GENDER_CODE - Recipient Gender Code
+         * SE_END_DATE - Service Event End Date
+         * SE_START_DATE - Service Event Start Date
+         * SECTOR - ? Not explained in metadata | one from ['INPATIENT', 'COMMUNITY', 'EMERGENCY', 'DIAGNOSTIC-THERAP', 'AMBULAT-OTHER']
+         * DOCTOR_CLASS - ? Not explained in metadata | one from ['SPECIALIST', 'GP', 'ALLIED']
+ 
     dad - Discharge Abstract Database (DAD), Inpatient
+         * INST - "Institution Number (Submitting Institution Number)"
+         * ADMITDATE - Date of admission
+         * ADMITTIME - Time of admission
+         * INSTFROM - Instituion From
+         * ADMITCAT - Admit Category describes the initial status of the patient at the time of admission to the reporting facility.
+         * ENTRYCODE - Entry Code indicates the last point of entry prior to being admitted as an inpatient to the reporting facility.
+         * ADMITBYAMB - Admit via Ambulance
+         * DISDATE - Date of discharge
+         * DISTIME - Time of discharge
+         * INSTTO - Institution To
+         * DISP - Discharge Disposition Code
+         * DXCODE - Diagnosis Code
+         * DXTYPE - Diagnosis Type Code
+         * COMASCALE - Glasgow Coma Scale Code
+         * ICU_HOURS - Intensive Care Unit LOS in hours
+         * CCU_HOURS - Coronary Care Unit LOS in hours
+         * AGE_ADMIT - Age at Admission
+         * CMG - Case Mix Group Code
+         * COMORB_LVL - Comorbidity Level Code
+         * RIW_CODE - Resource Intensity Weight (RIW) Code | An Atypical code (01-99) is assigned based on an unusual CMG assignment, invalid length of stay, death, transfers to/from other acute care institutions, and sign-outs.  Typical cases are assigned code 00.
+         * RIL - Resource Intensity Level Code | 
+         * RIW - Resource Intensity Weight | Resource Intensity Weight (RIW) values provide a measure of a patient's relative resource consumption compared to an average typical inpatient cost.
+         * RCPT_ZONE - Zone of residence of the patient | Analytics derived.  The number of the AHS Zone where the patient lives.  If the patient does not live in Alberta, 9 - Unknown or out of province/country is populated.
+         * INST_ZONE - Institution zone | The number that identifies the Alberta Health Services-zone where the submitting institution is located.  Zone boundaries are set by Alberta Health with input from Alberta Health Services.
+         * ALL_DAYS - Total length of stay (LOS)
+         * ACUTE_DAYS - Acute length of stay | "The Acute LOS is the Calculated Length of Stay minus the number of Alternate Level of Care (ALC) days. The ALC days (service) starts at the time of designation and ends at the time of discharge/transfer to a discharge destination or when the patient’s needs or condition changes and the designation of ALC no longer applies, as documented by the clinician.
+         * POSTCODE - Three digits postal code of patients residence
+         * PROCCODE - Intervention Code
+    
     lab - Provinicial Laboratory(Lab)
+    
     narcs - National Ambulatory Care Reporting System (NACRS) & Alberta Ambulatory Care Reporting System (AACRS)
+
     pin - Pharmaceutical Information Network(PIN)
+    
     reg - Alberta Health Care Insurance Plan (AHCIP) Registry
-    vs - Vital Statistics-Death
+            * ACTIVE_COVERAGE - Person Active Coverage Indicator Fiscal Year End
+            * DEATH_IND - Person Death Indicator Fiscal Year End
+            * FYE - Fiscal Year End
+            * PERS_REAP_END_DATE - Person Registration Eligibility And Premiums End Date
+            * PERS_REAP_END_RSN_CODE - ? Not explained in metadata ?
+            * POSTCODE - Three letter postal code
+            
+    vs - Vital Statistics-Death: The source of information in this dataset is Alberta Vital Statistics.  All deaths in Alberta must be registered with Alberta Vital Statistics. Information in the dataset is derived from the Death Registration form, medical certificate of death, and the medical examiners certificate of death (where applicable).  Additional derived variables are added to the file to facilitate queries and analysis of the data. The file is supplied to Alberta Health Services through Alberta Health.
+            * AGE - 
+            * AUTOPSY - 
+            * BIRTH_DATE - 
+            * DETHDATE - 
+            * DR_ID - 
+            * FISCAL_YR - 
+            * HOSP_ID - 
+            * MARRST - 
+            * OCCUPATION - 
+            * PL_DETH - 
+            * PL_INJURY - 
+            * PL_SGC - 
+            * POSTCODE - 
+            * SEX - 
+            * STKH_NUM_1 - 
+            * STKH_NUM_2 - 
+            * STKH_NUM_3 - 
+            * STKH_NUM_4 - 
+            * STKH_NUM_5 - 
+            * U_CAUSE - 
+            * YEAR - 
+
+    
+    atc - ATC codes
+    
+    postal_codes - postal code data
+    
+    population - population estimates in Calgary
+
+    proccodes - 
+
+    dxcodes -
+    
     """
 
     def __init__(self):
@@ -205,6 +303,10 @@ class AHS:
         self.vs = get_vs()
         self.atc = get_atc()
         self.population = get_population()
+        self.postal_codes = get_postal_codes()
+        self.proccodes = pd.read_parquet(FNS['proccodes'])
+        self.dxcodes = pd.read_parquet(FNS['dxcodes'])
+
 
         self.antibiotics_names = self.pin[
             self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")

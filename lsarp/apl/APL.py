@@ -6,8 +6,8 @@ import datetime
 from ..tools import age_to_age_group, add_date_features_from_datetime_col
 from .helpers import replace_interp, get_element, key_func_SIRN
 
-FN = "/bulk/LSARP/datasets/APL/220317/220317-sw__APL.parquet"
-
+FN = "/bulk/LSARP/datasets/APL/APL.parquet"
+FN_RESULTS = "/bulk/LSARP/datasets/APL/APL-results-INTERP.parquet"
 
 def load_apl_data(fn=FN, years=None, datetime_numeric=False):
     df = pd.read_parquet(fn)
@@ -88,14 +88,103 @@ def gen_bi_info(df):
     ]
     df = df[cols].drop_duplicates()
     df = df[df.BI_NBR.notna()]
-    assert df.BI_NBR.value_counts().max() == 1
+    assert df.BI_NBR.value_counts().max() == 1,  df.BI_NBR.value_counts()
     return df.reset_index(drop=True)
+
+
+def gen_drugs(df):
+    return df.filter(regex="DRUG").drop_duplicates().dropna(how='all').reset_index(drop=True)
+
+
+def gen_organisms(df):
+    return (
+        df.filter(regex="ORG")
+        .drop_duplicates()
+        .sort_values("ORG_LONG_NAME")
+        .reset_index(drop=True)
+    )
+    
+
+def gen_results(
+        df,
+        values=["INTERP"],
+        columns=["DRUG"],
+        index=[
+            "PID",
+            "BI_NBR",
+            "ORGANISM",
+            "ORG_LONG_NAME",
+            "ORG_SHORT_NAME",
+            "ORG_GENUS",
+            "ORG_GRAM_TYPE",
+            "ORG_GROUP",
+            "ORG_GROUP_SHORT",
+            "AGE_GRP",
+            "NAGE_YR",
+            "GENDER",
+            "ORD_ENCNTR_TYPE",
+            "ENCR_GRP",
+            "CURRENT_PT_FACILITY",
+            "ENCNTR_ADMIT_DTM",
+            "COLLECT_DTM",
+            "CULT_START_DTM",
+            "DSCHG_DTM",
+            "DAY",
+            "DAYOFWEEK",
+            "DAYOFYEAR",
+            "DATE",
+            "MONTH",
+            "QUARTER",
+            "TRIMESTER",
+            "YEAR",
+            "YEAR_DAY",
+            "YEAR_WEEK",
+            "YEAR_MONTH",
+            "YEAR_QUARTER",
+            "YEAR_TRIMESTER",
+            "HOSPITAL_ACQUIRED",
+            "COLLECT_HOURS_AFTER_ADMIT",
+            "FLAG_COLLECT_24h_BEFORE_ADMIT",
+        ],
+        organisms=None,
+    ):
+     
+    if isinstance(organisms, str):
+        organisms = [organisms]
+    apl_df = df.copy()
+    apl_df = apl_df[apl_df["DRUG"].notna()]
+    if organisms is not None:
+        apl_df = apl_df[apl_df.ORGANISM.isin(organisms)]
+    apl_df['INTERP'] = apl_df['INTERP'].fillna('N')
+    apl_df["DSCHG_DTM"] = apl_df["DSCHG_DTM"].fillna(datetime.date(1970,1,1))
+    apl_df["INTERP"] = pd.Categorical(
+        apl_df["INTERP"], categories=["N", "S", "I", "R"], ordered=True
+    )
+    apl_df.BI_NBR = apl_df.BI_NBR.fillna("NA")
+    missing_values = apl_df[index + columns + values].isna().sum()
+    if missing_values.sum() != 0:
+        missing_values = missing_values.loc[missing_values > 0]
+        logging.warning(
+            f"Selected columns contain missing values.\n{missing_values}"
+        )
+    data = pd.pivot_table(
+        apl_df, index=index, columns=columns, values=values, aggfunc=list,
+    )
+    index = apl_df[index].drop_duplicates()
+    data = data.reindex(index)
+    for col in data.columns:
+        data[col] = data[col].apply(get_element)
+    data = data.applymap(replace_interp)
+    if len(values) == 1:
+        data.columns = data.columns.get_level_values(1)
+    return data.dropna(axis=1, how="all")    
 
 
 class APL:
     def __init__(
         self,
         fn=FN,
+        fn_results=FN_RESULTS,
         organisms=None,
         years=None,
         bi_nbrs=None,
@@ -104,16 +193,14 @@ class APL:
         logging.warning(f'Loading APL data from {fn}')
         df = load_apl_data(fn=fn, years=years, datetime_numeric=datetime_numeric)
         self.df = df
-        self.drugs = df.filter(regex="DRUG").drop_duplicates().dropna(how='all').reset_index(drop=True)
-        self.organisms = (
-            df.filter(regex="ORG")
-            .drop_duplicates()
-            .sort_values("ORG_LONG_NAME")
-            .reset_index(drop=True)
-        )
+        self.drugs = gen_drugs(df)
+        self.organisms = gen_organisms(df)
         self.encounters = gen_encounters(df)
         self.cultures = gen_cultures(df)
         self.bi_info = gen_bi_info(df)
+        if fn_results is not None:
+            logging.warning(f'Loading APL-results from {fn_results}')
+            self.results = pd.read_parquet(fn_results)
 
         tmp = df[["ORD_ENCNTR_NBR", "CURRENT_PT_FACILITY", "YEAR"]].drop_duplicates()
         self.total_counts_facility = pd.crosstab(tmp.CURRENT_PT_FACILITY, tmp.YEAR)
@@ -122,7 +209,6 @@ class APL:
             organisms = [organisms]
         if (organisms is not None) or (bi_nbrs is not None):
             self.select_samples(organisms=organisms, bi_nbrs=bi_nbrs)
-        # self.results = self.gen_results()
         self.key_func_SIRN = key_func_SIRN
 
     def select_samples(self, organisms=None, bi_nbrs=None):
@@ -147,7 +233,6 @@ class APL:
         self.bi_info = self.bi_info[self.bi_info.BI_NBR.isin(bi_nbrs)].reset_index(
             drop=True
         )
-        # self.results = self.gen_results()
 
     @property
     def summary(self):
@@ -220,94 +305,8 @@ class APL:
         ]
         return annual_counts_by_org
 
-    def gen_results(
-        self,
-        values=["INTERP"],
-        columns=["DRUG"],
-        index=[
-            "BI_NBR",
-            "ORGANISM",
-            "ORG_LONG_NAME",
-            "ORG_GENUS",
-            "ORG_SPECIES",
-            "ORG_GRAM_TYPE",
-            "YEAR",
-            "PID",
-            "AGE_GRP",
-            "NAGE_YR",
-            "GENDER",
-            "ORD_ENCNTR_TYPE",
-            "ENCR_GRP",
-            "CULT_ID",
-            "STRAIN_ID",
-            "CURRENT_PT_FACILITY",
-            "ENCNTR_ADMIT_DTM",
-            "COLLECT_DTM",
-            "CULT_START_DTM",
-            "DSCHG_DTM",
-            "DAY",
-            "DAYOFWEEK",
-            "DAYOFYEAR",
-            "DATE",
-            "QUARTER",
-            "TRIMESTER",
-            "YEAR_DAY",
-            "YEAR_WEEK",
-            "YEAR_MONTH",
-            "YEAR_QUARTER",
-            "YEAR_TRIMESTER",
-            "HOSPITAL_ACQUIRED",
-            "COLLECT_HOURS_AFTER_ADMIT",
-            "FLAG_COLLECT_24h_BEFORE_ADMIT",
-        ],
-        organisms=None,
-    ):
-
-        if isinstance(organisms, str):
-            organisms = [organisms]
-
-        apl_df = self.df.copy()
-
-        apl_df = apl_df[apl_df["DRUG"].notna()]
-
-        if organisms is not None:
-            apl_df = apl_df[apl_df.ORGANISM.isin(organisms)]
-
-        apl_df['INTERP'] = apl_df['INTERP'].fillna('N')
-        apl_df["DSCHG_DTM"] = apl_df["DSCHG_DTM"].fillna(datetime.date(1970,1,1))
-
-        #apl_df = apl_df.fillna('NA')
-
-        apl_df["INTERP"] = pd.Categorical(
-            apl_df["INTERP"], categories=["N", "S", "I", "R"], ordered=True
-        )
-        
-        apl_df.BI_NBR = apl_df.BI_NBR.fillna("NA")
-
-        missing_values = apl_df[index + columns + values].isna().sum()
-        if missing_values.sum() != 0:
-            missing_values = missing_values.loc[missing_values > 0]
-            logging.warning(
-                f"Selected columns contain missing values.\n{missing_values}"
-            )
-
-        data = pd.pivot_table(
-            apl_df, index=index, columns=columns, values=values, aggfunc=list,
-        )
-
-        index = apl_df[index].drop_duplicates()
-
-        data = data.reindex(index)
-
-        for col in data.columns:
-            data[col] = data[col].apply(get_element)
-
-        data = data.applymap(replace_interp)
-
-        if len(values) == 1:
-            data.columns = data.columns.get_level_values(1)
-
-        return data.dropna(axis=1, how="all")
+    def gen_results(self, **kwargs):
+        self.results = gen_results(self.df, **kwargs)
 
     def pivot_results(
         self, antibiotics, columns=["YEAR", "ORGANISM"], stack_col="ORGANISM"

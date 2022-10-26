@@ -8,6 +8,7 @@ from pathlib import Path as P
 from pathlib import PureWindowsPath
 
 from .standards import WORKLIST_COLUMNS, WORKLIST_MAPPING
+from tqdm import tqdm
 
 
 def read_all_csv(path, **kwargs):
@@ -124,6 +125,7 @@ def standardize_organism(x):
         "MRSA": "SA",
         "VRE faem": "ENTFAEM",
         "EFAECALI": "ENTFAES",
+        "EFAECIUM": "ENTFAEM",
     }
     x = remove_digits(x)
     x = replacements[x] if x in replacements.keys() else x
@@ -144,7 +146,7 @@ def get_all_shipments(path):
     fns = glob(str(P(path) / "*Shipment*xlsx"))
     fns = [i for i in fns if "$" not in i]
     shipments = (
-        pd.concat([read_shipment(fn) for fn in fns])
+        pd.concat([read_shipment(fn) for fn in tqdm(fns)])
         .sort_values(["DATE_SHIPPED", "PLATE", "RPT", "PLATE_COL", "PLATE_ROW"])
         .reset_index(drop=True)
     )
