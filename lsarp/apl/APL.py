@@ -9,6 +9,7 @@ from .helpers import replace_interp, get_element, key_func_SIRN
 FN = "/bulk/LSARP/datasets/APL/APL.parquet"
 FN_RESULTS = "/bulk/LSARP/datasets/APL/APL-results-INTERP.parquet"
 
+
 def load_apl_data(fn=FN, years=None, datetime_numeric=False):
     df = pd.read_parquet(fn)
     df = df[~df.CURRENT_PT_FACILITY.isin(["UAH"])]
@@ -23,7 +24,7 @@ def load_apl_data(fn=FN, years=None, datetime_numeric=False):
     df["COLLECT_HOURS_AFTER_ADMIT"] = (df.COLLECT_DTM - df.ENCNTR_ADMIT_DTM).astype(
         "timedelta64[h]"
     )
-    df['INTERP'] = df['INTERP'].fillna('N')
+    df["INTERP"] = df["INTERP"].fillna("N")
     df["FLAG_COLLECT_24h_BEFORE_ADMIT"] = df["COLLECT_HOURS_AFTER_ADMIT"] < 24
     df["HOSPITAL_ACQUIRED"] = df["COLLECT_HOURS_AFTER_ADMIT"] > 48
     add_date_features_from_datetime_col(df, "COLLECT_DTM", numeric=datetime_numeric)
@@ -88,12 +89,17 @@ def gen_bi_info(df):
     ]
     df = df[cols].drop_duplicates()
     df = df[df.BI_NBR.notna()]
-    assert df.BI_NBR.value_counts().max() == 1,  df.BI_NBR.value_counts()
+    assert df.BI_NBR.value_counts().max() == 1, df.BI_NBR.value_counts()
     return df.reset_index(drop=True)
 
 
 def gen_drugs(df):
-    return df.filter(regex="DRUG").drop_duplicates().dropna(how='all').reset_index(drop=True)
+    return (
+        df.filter(regex="DRUG")
+        .drop_duplicates()
+        .dropna(how="all")
+        .reset_index(drop=True)
+    )
 
 
 def gen_organisms(df):
@@ -103,60 +109,60 @@ def gen_organisms(df):
         .sort_values("ORG_LONG_NAME")
         .reset_index(drop=True)
     )
-    
+
 
 def gen_results(
-        df,
-        values=["INTERP"],
-        columns=["DRUG"],
-        index=[
-            "PID",
-            "BI_NBR",
-            "ORGANISM",
-            "ORG_LONG_NAME",
-            "ORG_SHORT_NAME",
-            "ORG_GENUS",
-            "ORG_GRAM_TYPE",
-            "ORG_GROUP",
-            "ORG_GROUP_SHORT",
-            "AGE_GRP",
-            "NAGE_YR",
-            "GENDER",
-            "ORD_ENCNTR_TYPE",
-            "ENCR_GRP",
-            "CURRENT_PT_FACILITY",
-            "ENCNTR_ADMIT_DTM",
-            "COLLECT_DTM",
-            "CULT_START_DTM",
-            "DSCHG_DTM",
-            "DAY",
-            "DAYOFWEEK",
-            "DAYOFYEAR",
-            "DATE",
-            "MONTH",
-            "QUARTER",
-            "TRIMESTER",
-            "YEAR",
-            "YEAR_DAY",
-            "YEAR_WEEK",
-            "YEAR_MONTH",
-            "YEAR_QUARTER",
-            "YEAR_TRIMESTER",
-            "HOSPITAL_ACQUIRED",
-            "COLLECT_HOURS_AFTER_ADMIT",
-            "FLAG_COLLECT_24h_BEFORE_ADMIT",
-        ],
-        organisms=None,
-    ):
-     
+    df,
+    values=["INTERP"],
+    columns=["DRUG"],
+    index=[
+        "PID",
+        "BI_NBR",
+        "ORGANISM",
+        "ORG_LONG_NAME",
+        "ORG_SHORT_NAME",
+        "ORG_GENUS",
+        "ORG_GRAM_TYPE",
+        "ORG_GROUP",
+        "ORG_GROUP_SHORT",
+        "AGE_GRP",
+        "NAGE_YR",
+        "GENDER",
+        "ORD_ENCNTR_TYPE",
+        "ENCR_GRP",
+        "CURRENT_PT_FACILITY",
+        "ENCNTR_ADMIT_DTM",
+        "COLLECT_DTM",
+        "CULT_START_DTM",
+        "DSCHG_DTM",
+        "DAY",
+        "DAYOFWEEK",
+        "DAYOFYEAR",
+        "DATE",
+        "MONTH",
+        "QUARTER",
+        "TRIMESTER",
+        "YEAR",
+        "YEAR_DAY",
+        "YEAR_WEEK",
+        "YEAR_MONTH",
+        "YEAR_QUARTER",
+        "YEAR_TRIMESTER",
+        "HOSPITAL_ACQUIRED",
+        "COLLECT_HOURS_AFTER_ADMIT",
+        "FLAG_COLLECT_24h_BEFORE_ADMIT",
+    ],
+    organisms=None,
+):
+
     if isinstance(organisms, str):
         organisms = [organisms]
     apl_df = df.copy()
     apl_df = apl_df[apl_df["DRUG"].notna()]
     if organisms is not None:
         apl_df = apl_df[apl_df.ORGANISM.isin(organisms)]
-    apl_df['INTERP'] = apl_df['INTERP'].fillna('N')
-    apl_df["DSCHG_DTM"] = apl_df["DSCHG_DTM"].fillna(datetime.date(1970,1,1))
+    apl_df["INTERP"] = apl_df["INTERP"].fillna("N")
+    apl_df["DSCHG_DTM"] = apl_df["DSCHG_DTM"].fillna(datetime.date(1970, 1, 1))
     apl_df["INTERP"] = pd.Categorical(
         apl_df["INTERP"], categories=["N", "S", "I", "R"], ordered=True
     )
@@ -164,11 +170,13 @@ def gen_results(
     missing_values = apl_df[index + columns + values].isna().sum()
     if missing_values.sum() != 0:
         missing_values = missing_values.loc[missing_values > 0]
-        logging.warning(
-            f"Selected columns contain missing values.\n{missing_values}"
-        )
+        logging.warning(f"Selected columns contain missing values.\n{missing_values}")
     data = pd.pivot_table(
-        apl_df, index=index, columns=columns, values=values, aggfunc=list,
+        apl_df,
+        index=index,
+        columns=columns,
+        values=values,
+        aggfunc=list,
     )
     index = apl_df[index].drop_duplicates()
     data = data.reindex(index)
@@ -177,7 +185,17 @@ def gen_results(
     data = data.applymap(replace_interp)
     if len(values) == 1:
         data.columns = data.columns.get_level_values(1)
-    return data.dropna(axis=1, how="all")    
+    return data.dropna(axis=1, how="all")
+
+
+def gen_indexed_BIs():
+    bi_ndx = pd.read_csv(
+        "/bulk/LSARP/datasets/220726-tmp__APL-grouped-BSI-episodes/221007-tmp__APL-grouped-BSI-episodes-cutoff30days.csv",
+        low_memory=False,
+        na_values=[""],
+    )[["BI_NBR", "index"]]
+    bi_ndx = bi_ndx[bi_ndx["index"].fillna(False)].BI_NBR.sort_values()
+    return bi_ndx.values
 
 
 class APL:
@@ -188,9 +206,9 @@ class APL:
         organisms=None,
         years=None,
         bi_nbrs=None,
-        datetime_numeric=False
+        datetime_numeric=False,
     ):
-        logging.warning(f'Loading APL data from {fn}')
+        logging.warning(f"Loading APL data from {fn}")
         df = load_apl_data(fn=fn, years=years, datetime_numeric=datetime_numeric)
         self.df = df
         self.drugs = gen_drugs(df)
@@ -198,8 +216,10 @@ class APL:
         self.encounters = gen_encounters(df)
         self.cultures = gen_cultures(df)
         self.bi_info = gen_bi_info(df)
+        self.index = gen_indexed_BIs()
+
         if fn_results is not None:
-            logging.warning(f'Loading APL-results from {fn_results}')
+            logging.warning(f"Loading APL-results from {fn_results}")
             self.results = pd.read_parquet(fn_results)
 
         tmp = df[["ORD_ENCNTR_NBR", "CURRENT_PT_FACILITY", "YEAR"]].drop_duplicates()

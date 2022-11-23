@@ -98,19 +98,19 @@ def add_date_features_from_datetime_col(
         df.loc[:, f"{prefix}YEAR_TRIMESTER"] = (
             df.YEAR.astype(str) + "-" + df.TRIMESTER.astype(str)
         )
-    elif numeric == 'mixed':
+    elif numeric == "mixed":
         df.loc[:, f"{prefix}YEAR_WEEK"] = df.YEAR + df[f"{prefix}WEEK"].apply(
             lambda x: (x - 1) / 52
-        )        
+        )
         df.loc[:, f"{prefix}YEAR_MONTH"] = df.YEAR + df[f"{prefix}MONTH"].apply(
             lambda x: (x - 1) / 12
-        )        
+        )
         df.loc[:, f"{prefix}YEAR_QUARTER"] = df.YEAR + df[f"{prefix}QUARTER"].apply(
             lambda x: (x - 1) / 4
         )
         df.loc[:, f"{prefix}YEAR_TRIMESTER"] = df.YEAR + df[f"{prefix}TRIMESTER"].apply(
             lambda x: (x - 1) / 3
-        )        
+        )
 
 
 def sort_df_by_row_count(df, axis=1, ascending=True):

@@ -5,24 +5,25 @@ from pathlib import Path as P
 
 gender_map = {"M": "Male", "F": "Female"}
 
-DPATH = P('/bulk/LSARP/datasets/AHS/220506')
+DPATH = P("/bulk/LSARP/datasets/AHS/220506")
 
 FNS = {
-    'accs': 'RMT24154_PIM_ACCS_May2022.csv',
-    'claims': 'RMT24154_PIM_CLAIMS_May2022.csv',
-    'dad': 'RMT24154_PIM_DAD_DE_IDENT.csv',
-    'lab': 'RMT24154_PIM_LAB_May2022.csv',
-    'narcs': 'RMT24154_PIM_NACRS_May2022.csv',
-    'pin': 'RMT24154_PIM_PIN_May2022.csv',
-    'vs': 'RMT24154_PIM_VS_May2022.csv',
-    'reg': 'RMT24154_PIM_REGISTRY_May2022.csv',
-    'dad': 'RMT24154_PIM_DAD_May2022.csv',
-    'atc': '/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv',
-    'pop': '/bulk/LSARP/datasets/211109-sw__Calgary-Population-Estimates/211109-sw__Interpolated-Monthly-Population-Calgary.csv',
-    'postal_codes': '/bulk/LSARP/datasets/221011-sw__postal-code-geographic-regions-from-Wikipedia/221011-sw__postal-code-geographic-regions-from-Wikipedia.csv',
-    'proccodes': '/bulk/LSARP/datasets/AHS/221020-sw__proccodes.parquet',
-    'dxcodes': '/bulk/LSARP/datasets/AHS/221020-sw__dxcodes.parquet',
+    "accs": "RMT24154_PIM_ACCS_May2022.csv",
+    "claims": "RMT24154_PIM_CLAIMS_May2022.csv",
+    "dad": "RMT24154_PIM_DAD_DE_IDENT.csv",
+    "lab": "RMT24154_PIM_LAB_May2022.csv",
+    "narcs": "RMT24154_PIM_NACRS_May2022.csv",
+    "pin": "RMT24154_PIM_PIN_May2022.csv",
+    "vs": "RMT24154_PIM_VS_May2022.csv",
+    "reg": "RMT24154_PIM_REGISTRY_May2022.csv",
+    "dad": "RMT24154_PIM_DAD_May2022.csv",
+    "atc": "/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv",
+    "population": "/bulk/LSARP/datasets/221114-am_calgary_population_zone/221114-am_calgary_population_zone.csv",
+    "postal_codes": "/bulk/LSARP/datasets/221011-sw__postal-code-geographic-regions-from-Wikipedia/221011-sw__postal-code-geographic-regions-from-Wikipedia.csv",
+    "proccodes": "/bulk/LSARP/datasets/AHS/221020-sw__proccodes.parquet",
+    "dxcodes": "/bulk/LSARP/datasets/AHS/221020-sw__dxcodes.parquet",
 }
+
 
 def csv_parquet(fn):
     """
@@ -50,10 +51,13 @@ def convert_datetime(x):
     return pd.to_datetime(x, format="%d%b%Y:%H:%M:%S", errors="coerce")
 
 
-@csv_parquet(fn=DPATH / FNS['accs'])
+@csv_parquet(fn=DPATH / FNS["accs"])
 def get_accs(fn):
     df = pd.read_csv(
-        fn, low_memory=False, dtype={"VISDATE": str, "DISDATE": str, "DISTIME": str},
+        fn,
+        low_memory=False,
+        dtype={"VISDATE": str, "DISDATE": str, "DISTIME": str},
+        na_values=[""],
     )
     df["VISDATE"] = pd.to_datetime(df["VISDATE"], format="%Y%m%d", errors="coerce")
     df["DISDATE"] = pd.to_datetime(df["DISDATE"], format="%Y%m%d", errors="coerce")
@@ -65,21 +69,42 @@ def get_accs(fn):
     return df
 
 
-@csv_parquet(fn=DPATH / FNS['claims'])
+@csv_parquet(fn=DPATH / FNS["claims"])
 def get_claims(fn):
     df = pd.read_csv(
-        fn.with_suffix(".csv"), low_memory=False, dtype={"DISDATE": str, "DISTIME": str}
+        fn.with_suffix(".csv"),
+        low_memory=False,
+        dtype={
+            "DISDATE": str,
+            "DISTIME": str,
+            "HLTH_DX_ICD9X_CODE_1": str,
+            "HLTH_DX_ICD9X_CODE_2": str,
+            "HLTH_DX_ICD9X_CODE_3": str,
+            "HLTH_SRVC_CCPX_CODE": str,
+        },
+        na_values=[""],
+    )
+    df["HLTH_DX_ICD9X_CODES"] = df.filter(regex="ICD9X").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df = df.drop(
+        ["HLTH_DX_ICD9X_CODE_1", "HLTH_DX_ICD9X_CODE_2", "HLTH_DX_ICD9X_CODE_3"], axis=1
     )
     df["SE_END_DATE"] = convert_datetime(df["SE_END_DATE"])
     df["SE_START_DATE"] = convert_datetime(df["SE_START_DATE"])
     df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
-    df = df.sort_values(['BI_NBR', 'SE_START_DATE', 'SE_END_DATE'])
-    return df.set_index('BI_NBR')
+    df = df.sort_values(["BI_NBR", "SE_START_DATE", "SE_END_DATE"])
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS['dad'])
+@csv_parquet(fn=DPATH / FNS["dad"])
 def get_dad(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype={"INST": str, "INSTFROM": str, "INSTTO": str})
+    df = pd.read_csv(
+        fn.with_suffix(".csv"),
+        low_memory=False,
+        dtype={"INST": str, "INSTFROM": str, "INSTTO": str},
+        na_values=[""],
+    )
     df["ADMITDATE"] = pd.to_datetime(df["ADMITDATE"], format="%Y%m%d", errors="coerce")
     df["DISDATE"] = pd.to_datetime(df["DISDATE"], format="%Y%m%d", errors="coerce")
     df["ADMITTIME"] = pd.to_datetime(
@@ -90,25 +115,31 @@ def get_dad(fn):
     ).dt.time
     df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
-    drop_columns = df.filter(regex='DXCODE|DXTYPE|PROCCODE').columns.to_list()
-    df['DXCODES'] = df.filter(regex='DXCODE').apply(lambda x: [e for e in x if e is not None], axis=1)
-    df['PROCCODES'] = df.filter(regex='PROCCODE').apply(lambda x: [e for e in x if e is not None], axis=1)
+    drop_columns = df.filter(regex="DXCODE|DXTYPE|PROCCODE").columns.to_list()
+    df["DXCODES"] = df.filter(regex="DXCODE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROCCODES"] = df.filter(regex="PROCCODE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
     df = df.drop(drop_columns, axis=1)
-    df = df.rename(columns={'Post_code': 'POSTCODE'})
-    return df.set_index('BI_NBR')
+    df = df.rename(columns={"Post_code": "POSTCODE"})
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS['lab'])
+@csv_parquet(fn=DPATH / FNS["lab"])
 def get_lab(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False)
+    df = pd.read_csv(
+        fn.with_suffix(".csv"), low_memory=False, dtype={"TEST_CD": str}, na_values=[""]
+    )
     df = df.rename(columns={"ISOLATE_NBR": "BI_NBR"})
     df["TEST_VRFY_DTTM"] = convert_datetime(df["TEST_VRFY_DTTM"])
-    return df.set_index('BI_NBR')
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS['narcs'])
+@csv_parquet(fn=DPATH / FNS["narcs"])
 def get_nacrs(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
+    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, na_values=[""])
     df["VISIT_DATE"] = pd.to_datetime(
         df["VISIT_DATE"], format="%Y%m%d", errors="coerce"
     )
@@ -126,12 +157,15 @@ def get_nacrs(fn):
         df[col] = df[col].astype(float)
     df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
-    return df.set_index('BI_NBR')
+    df = df.rename(columns={"Post_code": "POSTCODE"})
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS['pin'])
+@csv_parquet(fn=DPATH / FNS["pin"])
 def get_pin(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
+    df = pd.read_csv(
+        fn.with_suffix(".csv"), low_memory=False, dtype=str, na_values=[""]
+    )
     df["DSPN_DATE"] = convert_datetime(df["DSPN_DATE"])
     for col in ["DSPN_AMT_QTY", "DSPN_DAY_SUPPLY_QTY"]:
         df[col] = df[col].astype(float)
@@ -140,12 +174,14 @@ def get_pin(fn):
     atc = get_atc()
     atc["DRUG_LABEL"] = atc.DRUG_LABEL.str.capitalize()
     df = pd.merge(df, atc, how="left")
-    return df.set_index('BI_NBR')
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS['reg'])
+@csv_parquet(fn=DPATH / FNS["reg"])
 def get_reg(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
+    df = pd.read_csv(
+        fn.with_suffix(".csv"), low_memory=False, dtype=str, na_values=[""]
+    )
     df["PERS_REAP_END_DATE"] = convert_datetime(df["PERS_REAP_END_DATE"])
     for col in [
         "ACTIVE_COVERAGE",
@@ -156,41 +192,62 @@ def get_reg(fn):
         "OUT_MIGRATION_IND",
     ]:
         df[col] = df[col].astype(int)
-    df = df.drop(['SEX', 'AGE_GRP_CD'], axis=1)
-    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR", "Post_code": "POSTCODE"})
-    return df.set_index('BI_NBR')
+    df = df.drop(["SEX", "AGE_GRP_CD"], axis=1)
+    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR", "POSTAL_CD": "POSTCODE"})
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS['vs'])
+@csv_parquet(fn=DPATH / FNS["vs"])
 def get_vs(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, dtype=str)
+    df = pd.read_csv(
+        fn.with_suffix(".csv"), low_memory=False, dtype=str, na_values=[""]
+    )
     df["DETHDATE"] = convert_datetime(df["DETHDATE"])
     df = df.rename(
         columns={"SEX": "GENDER", "DETHDATE": "DEATH_DATE", "ISOLATE_NBR": "BI_NBR"}
     )
     df["GENDER"] = df["GENDER"].replace(gender_map)
     df["AGE"] = df["AGE"].astype(int)
-    df = df.rename(columns={'Post_code': 'POSTCODE'})
-    return df.set_index('BI_NBR')
+    df = df.rename(columns={"Post_code": "POSTCODE"})
+    return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=FNS['atc'])
+@csv_parquet(fn=FNS["atc"])
 def get_atc(fn):
     df = pd.read_csv(fn)
     df["DRUG_LABEL"] = df.DRUG_LABEL.str.capitalize()
     return df
 
 
-@csv_parquet(fn=FNS['postal_codes'])
-def get_postal_codes(fn):
+@csv_parquet(fn=FNS["postal_codes"])
+def get_postcodes(fn):
     return pd.read_csv(fn)
 
-@csv_parquet(
-    fn=FNS['pop']
-)
+
 def get_population(fn):
-    df = pd.read_csv(fn)
-    return df
+    df = pd.read_csv(fn).rename(
+        columns={
+            "Year": "YEAR",
+            "Sex": "GENDER",
+            "Age": "AGE",
+            "Population": "POPULATION",
+        }
+    )
+    dense = (
+        df[(df.GENDER != "BOTH") & (df.AGE != "ALL")][
+            ["YEAR", "GENDER", "AGE", "POPULATION"]
+        ]
+        .set_index(["YEAR", "GENDER", "AGE"])
+        .unstack(
+            [
+                "GENDER",
+                "AGE",
+            ]
+        )
+        .astype(int)
+        .sort_index(axis=1)
+    )
+    return dense
 
 
 class AHS:
@@ -198,7 +255,7 @@ class AHS:
     Has AHS datasets stored in attributes:
     -----
     accs - older version of the NACRS database
-    
+
     claims - Practitioner Claims,Physician Claims, Physician Billing
          * FRE_ACTUAL_PAID_AMT - Financial Resource Event Actual Paid Amount
          * HLTH_DX_ICD9X_CODE - Diagnosis Code
@@ -210,7 +267,7 @@ class AHS:
          * SE_START_DATE - Service Event Start Date
          * SECTOR - ? Not explained in metadata | one from ['INPATIENT', 'COMMUNITY', 'EMERGENCY', 'DIAGNOSTIC-THERAP', 'AMBULAT-OTHER']
          * DOCTOR_CLASS - ? Not explained in metadata | one from ['SPECIALIST', 'GP', 'ALLIED']
- 
+
     dad - Discharge Abstract Database (DAD), Inpatient
          * INST - "Institution Number (Submitting Institution Number)"
          * ADMITDATE - Date of admission
@@ -232,7 +289,7 @@ class AHS:
          * CMG - Case Mix Group Code
          * COMORB_LVL - Comorbidity Level Code
          * RIW_CODE - Resource Intensity Weight (RIW) Code | An Atypical code (01-99) is assigned based on an unusual CMG assignment, invalid length of stay, death, transfers to/from other acute care institutions, and sign-outs.  Typical cases are assigned code 00.
-         * RIL - Resource Intensity Level Code | 
+         * RIL - Resource Intensity Level Code |
          * RIW - Resource Intensity Weight | Resource Intensity Weight (RIW) values provide a measure of a patient's relative resource consumption compared to an average typical inpatient cost.
          * RCPT_ZONE - Zone of residence of the patient | Analytics derived.  The number of the AHS Zone where the patient lives.  If the patient does not live in Alberta, 9 - Unknown or out of province/country is populated.
          * INST_ZONE - Institution zone | The number that identifies the Alberta Health Services-zone where the submitting institution is located.  Zone boundaries are set by Alberta Health with input from Alberta Health Services.
@@ -240,13 +297,13 @@ class AHS:
          * ACUTE_DAYS - Acute length of stay | "The Acute LOS is the Calculated Length of Stay minus the number of Alternate Level of Care (ALC) days. The ALC days (service) starts at the time of designation and ends at the time of discharge/transfer to a discharge destination or when the patient’s needs or condition changes and the designation of ALC no longer applies, as documented by the clinician.
          * POSTCODE - Three digits postal code of patients residence
          * PROCCODE - Intervention Code
-    
+
     lab - Provinicial Laboratory(Lab)
-    
+
     narcs - National Ambulatory Care Reporting System (NACRS) & Alberta Ambulatory Care Reporting System (AACRS)
 
     pin - Pharmaceutical Information Network(PIN)
-    
+
     reg - Alberta Health Care Insurance Plan (AHCIP) Registry
             * ACTIVE_COVERAGE - Person Active Coverage Indicator Fiscal Year End
             * DEATH_IND - Person Death Indicator Fiscal Year End
@@ -254,41 +311,19 @@ class AHS:
             * PERS_REAP_END_DATE - Person Registration Eligibility And Premiums End Date
             * PERS_REAP_END_RSN_CODE - ? Not explained in metadata ?
             * POSTCODE - Three letter postal code
-            
-    vs - Vital Statistics-Death: The source of information in this dataset is Alberta Vital Statistics.  All deaths in Alberta must be registered with Alberta Vital Statistics. Information in the dataset is derived from the Death Registration form, medical certificate of death, and the medical examiners certificate of death (where applicable).  Additional derived variables are added to the file to facilitate queries and analysis of the data. The file is supplied to Alberta Health Services through Alberta Health.
-            * AGE - 
-            * AUTOPSY - 
-            * BIRTH_DATE - 
-            * DETHDATE - 
-            * DR_ID - 
-            * FISCAL_YR - 
-            * HOSP_ID - 
-            * MARRST - 
-            * OCCUPATION - 
-            * PL_DETH - 
-            * PL_INJURY - 
-            * PL_SGC - 
-            * POSTCODE - 
-            * SEX - 
-            * STKH_NUM_1 - 
-            * STKH_NUM_2 - 
-            * STKH_NUM_3 - 
-            * STKH_NUM_4 - 
-            * STKH_NUM_5 - 
-            * U_CAUSE - 
-            * YEAR - 
 
-    
+    vs - Vital Statistics-Death: The source of information in this dataset is Alberta Vital Statistics.  All deaths in Alberta must be registered with Alberta Vital Statistics. Information in the dataset is derived from the Death Registration form, medical certificate of death, and the medical examiners certificate of death (where applicable).  Additional derived variables are added to the file to facilitate queries and analysis of the data. The file is supplied to Alberta Health Services through Alberta Health.
+
     atc - ATC codes
-    
-    postal_codes - postal code data
-    
+
+    postcodes - postal code data
+
     population - population estimates in Calgary
 
-    proccodes - 
+    proccodes - PROCCODE and description
 
-    dxcodes -
-    
+    dxcodes - DXCODE and description
+
     """
 
     def __init__(self):
@@ -302,27 +337,26 @@ class AHS:
         self.reg = get_reg()
         self.vs = get_vs()
         self.atc = get_atc()
-        self.population = get_population()
-        self.postal_codes = get_postal_codes()
-        self.proccodes = pd.read_parquet(FNS['proccodes'])
-        self.dxcodes = pd.read_parquet(FNS['dxcodes'])
-
+        self.population = get_population(FNS["population"])
+        self.postcodes = get_postcodes()
+        self.proccodes = pd.read_parquet(FNS["proccodes"])
+        self.dxcodes = pd.read_parquet(FNS["dxcodes"])
 
         self.antibiotics_names = self.pin[
             self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
         ].DRUG_LABEL.unique()
 
         self.datasets = dict(
-         accs = self.accs,
-         claims = self.claims,
-         dad = self.dad,
-         lab = self.lab,
-         narcs = self.narcs,
-         pin = self.pin,
-         reg = self.reg,
-         vs = self.vs,
+            accs=self.accs,
+            claims=self.claims,
+            dad=self.dad,
+            lab=self.lab,
+            narcs=self.narcs,
+            pin=self.pin,
+            reg=self.reg,
+            vs=self.vs,
         )
-        
+
     @property
     def drug_by_bi_nbr(self):
         return (
@@ -342,4 +376,3 @@ class AHS:
         self.pin = self.pin[self.pin.BI_NBR.isin(isolate_nbrs)].copy()
         self.reg = self.reg[self.reg.BI_NBR.isin(isolate_nbrs)].copy()
         self.vs = self.vs[self.vs.BI_NBR.isin(isolate_nbrs)].copy()
-   
