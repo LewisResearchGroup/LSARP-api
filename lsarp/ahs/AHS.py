@@ -328,34 +328,44 @@ class AHS:
 
     def __init__(self):
 
-        self.accs = get_accs()
-        self.claims = get_claims()
-        self.dad = get_dad()
-        self.lab = get_lab()
-        self.narcs = get_nacrs()
-        self.pin = get_pin()
-        self.reg = get_reg()
-        self.vs = get_vs()
+        self.accs, self.claims, self.dad, self.lab, self.nacrs, self.pin, self.reg, self.vs = None, None, None, None, None, None, None, None
+
         self.atc = get_atc()
         self.population = get_population(FNS["population"])
         self.postcodes = get_postcodes()
         self.proccodes = pd.read_parquet(FNS["proccodes"])
         self.dxcodes = pd.read_parquet(FNS["dxcodes"])
 
-        self.antibiotics_names = self.pin[
-            self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
-        ].DRUG_LABEL.unique()
+        #self.antibiotics_names = self.pin[
+        #    self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
+        #].DRUG_LABEL.unique()
 
-        self.datasets = dict(
-            accs=self.accs,
-            claims=self.claims,
-            dad=self.dad,
-            lab=self.lab,
-            narcs=self.narcs,
-            pin=self.pin,
-            reg=self.reg,
-            vs=self.vs,
-        )
+
+    def load(self, what):
+        if what in ['accs', 'all']:
+            self.acc = get_accs()
+
+        if what in ['claims', 'all']:    
+            self.claims = get_claims()
+
+        if what in ['dad', 'all']:
+            self.dad = get_dad()
+
+        if what in ['lab', 'all']:    
+            self.lab = get_lab()
+
+        if what in ['nacrs', 'all']:
+            self.nacrs = get_nacrs()
+
+        if what in ['pin', 'all']:    
+            self.pin = get_pin()
+
+        if what in ['reg', 'all']:
+            self.reg = get_reg()
+
+        if what in ['vs', 'all']:    
+            self.vs = get_vs()
+              
 
     @property
     def drug_by_bi_nbr(self):
