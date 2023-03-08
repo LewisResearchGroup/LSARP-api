@@ -12,13 +12,13 @@ FN_RESULTS = "/bulk/LSARP/datasets/APL/APL-results-INTERP.parquet"
 
 def load_apl_data(fn=FN, years=None, datetime_numeric=False):
     df = pd.read_parquet(fn)
-    df = df[~df.CURRENT_PT_FACILITY.isin(["UAH"])]
-    df = df[~df.CURRENT_PT_LOCN.fillna("").str.contains("Edmon")]
+    #df = df[~df.CURRENT_PT_FACILITY.isin(["UAH"])]
+    #df = df[~df.CURRENT_PT_LOCN.fillna("").str.contains("Edmon")]
     df["YEAR"] = df.COLLECT_DTM.dt.year
-    df = df[df["GENDER"].isin(["Male", "Female"])]
-    df = df[df["NAGE_YR"] < 110]
-    df = df[df.COLLECT_DTM.dt.year > 2000]
-    df = df[df.COLLECT_DTM.dt.year < 2022]
+    #df = df[df["GENDER"].isin(["Male", "Female"])]
+    #df = df[df["NAGE_YR"] < 110]
+    #df = df[df.COLLECT_DTM.dt.year > 2000]
+    #df = df[df.COLLECT_DTM.dt.year < 2022]
     df["NTH_YEAR"] = df.COLLECT_DTM.dt.year - df.ENCNTR_ADMIT_DTM.dt.year
     df["AGE_GRP"] = df["NAGE_YR"].apply(age_to_age_group)
     df["COLLECT_HOURS_AFTER_ADMIT"] = (df.COLLECT_DTM - df.ENCNTR_ADMIT_DTM).astype(
@@ -177,6 +177,7 @@ def gen_results(
         columns=columns,
         values=values,
         aggfunc=list,
+        dropna=True
     )
     index = apl_df[index].drop_duplicates()
     data = data.reindex(index)
@@ -327,6 +328,7 @@ class APL:
 
     def gen_results(self, **kwargs):
         self.results = gen_results(self.df, **kwargs)
+        return self.results
 
     def pivot_results(
         self, antibiotics, columns=["YEAR", "ORGANISM"], stack_col="ORGANISM"

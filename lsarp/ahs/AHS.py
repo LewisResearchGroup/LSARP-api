@@ -12,14 +12,14 @@ FNS = {
     "claims": "RMT24154_PIM_CLAIMS_May2022.csv",
     "dad": "RMT24154_PIM_DAD_DE_IDENT.csv",
     "lab": "RMT24154_PIM_LAB_May2022.csv",
-    "narcs": "RMT24154_PIM_NACRS_May2022.csv",
+    "nacrs": "RMT24154_PIM_NACRS_May2022.csv",
     "pin": "RMT24154_PIM_PIN_May2022.csv",
     "vs": "RMT24154_PIM_VS_May2022.csv",
     "reg": "RMT24154_PIM_REGISTRY_May2022.csv",
     "dad": "RMT24154_PIM_DAD_May2022.csv",
     "atc": "/bulk/LSARP/datasets/211108-sw__ATC-codes/ATC_small.csv",
     "population": "/bulk/LSARP/datasets/221114-am_calgary_population_zone/221114-am_calgary_population_zone.csv",
-    "postal_codes": "/bulk/LSARP/datasets/221011-sw__postal-code-geographic-regions-from-Wikipedia/221011-sw__postal-code-geographic-regions-from-Wikipedia.csv",
+    "postcodes": "/bulk/LSARP/datasets/221125-sw__postal-codes-from_www-aggdata-com/221125-sw__postal-codes-from_www-aggdata-com.csv",
     "proccodes": "/bulk/LSARP/datasets/AHS/221020-sw__proccodes.parquet",
     "dxcodes": "/bulk/LSARP/datasets/AHS/221020-sw__dxcodes.parquet",
 }
@@ -56,17 +56,168 @@ def get_accs(fn):
     df = pd.read_csv(
         fn,
         low_memory=False,
-        dtype={"VISDATE": str, "DISDATE": str, "DISTIME": str},
+        dtype={
+            "MISPRIME": str,
+            "VISDATE": str, 
+            "DISDATE": str, 
+            "DISTIME": str,
+            'DOCSVC1': str,
+            'DOCSVC2': str,
+            'DOCSVC3': str,
+            'DOCSVC4': str,
+            'DOCSVC5': str,
+            'PROVTYPE1': str,
+            'PROVTYPE2': str,
+            'PROVTYPE3': str,
+            'PROVTYPE4': str,
+            'PROVTYPE5': str,
+            'DXCODE1': str,
+            'DXCODE2': str,
+            'DXCODE3': str,
+            'DXCODE4': str,
+            'DXCODE5': str,
+            'DXCODE6': str,
+            'DXCODE7': str,
+            'DXCODE8': str,
+            'DXCODE9': str,
+            'DXCODE10': str,
+            'PROCCODE1': str,
+            'PROCCODE2': str,
+            'PROCCODE3': str,
+            'PROCCODE4': str,
+            'PROCCODE5': str,
+            'PROCCODE6': str,
+            'PROCCODE7': str,
+            'PROCCODE8': str,
+            'PROCCODE9': str,
+            'PROCCODE10': str,
+        },
         na_values=[""],
+    ).rename(columns={
+        'VISDATE': 'VISIT_DATE', 
+        'DISDATE': 'DISP_DATE', 
+        'DISTIME': 'DISP_TIME', 
+        "SEX": "GENDER", 
+        "ISOLATE_NBR": "BI_NBR",
+        "Post_code": "POSTCODE",
+        "DISP": "DISPOSITION",
+        "AHS_ZONE": 'INST_ZONE',
+        "LOS_MINUTES": "VISIT_LOS_MINUTES",
+        "MISPRIME": "MIS_CODE",
+        }
     )
-    df["VISDATE"] = pd.to_datetime(df["VISDATE"], format="%Y%m%d", errors="coerce")
-    df["DISDATE"] = pd.to_datetime(df["DISDATE"], format="%Y%m%d", errors="coerce")
-    df["DISTIME"] = pd.to_datetime(
-        df["DISTIME"], format="%H%M", errors="coerce"
+    df['MIS_CODE'] = df['MIS_CODE'].str.pad(9, side='right', fillchar='0')
+    df["VISIT_DATE"] = pd.to_datetime(df["VISIT_DATE"], format="%Y%m%d", errors="coerce")
+    df["DISP_DATE"] = pd.to_datetime(df["DISP_DATE"], format="%Y%m%d", errors="coerce")
+    df["DISP_TIME"] = pd.to_datetime(
+        df["DISP_TIME"], format="%H%M", errors="coerce"
     ).dt.time
+
+    drop_columns = df.filter(
+        regex="DXCODE|PROCCODE|PROVIDER_SVC|PROVTYPE|DOCSVC"
+    ).columns.to_list()
+    df["DXCODES"] = df.filter(regex="DXCODE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROCCODES"] = df.filter(regex="PROCCODE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROVIDER_SVCS"] = df.filter(regex="DOCSVC").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROVIDER_TYPES"] = df.filter(regex="PROVTYPE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["GENDER"] = df["GENDER"].replace(gender_map)
+    df = df.drop(drop_columns, axis=1)
+    return df.set_index('BI_NBR')
+
+
+@csv_parquet(fn=DPATH / FNS["nacrs"])
+def get_nacrs(fn):
+    df = pd.read_csv(
+        fn.with_suffix(".csv"),
+        low_memory=False,
+        na_values=[""],
+        dtype={
+            "INST": str,
+            "INSTFROM": str,
+            "INSTTO": str,
+            "INST_ZONE": str,
+            "MIS_CODE": str,
+            "PROVIDER_TYPE1": str,
+            "PROVIDER_SVC1": str,
+            "PROVIDER_TYPE2": str,
+            "PROVIDER_SVC2": str,
+            "PROVIDER_TYPE3": str,
+            "PROVIDER_SVC3": str,
+            "PROVIDER_TYPE4": str,
+            "PROVIDER_SVC4": str,
+            "PROVIDER_TYPE5": str,
+            "PROVIDER_SVC5": str,
+            "PROVIDER_TYPE6": str,
+            "PROVIDER_SVC6": str,
+            "PROVIDER_TYPE7": str,
+            "PROVIDER_SVC7": str,
+            "PROVIDER_TYPE8": str,
+            "PROVIDER_SVC8": str,
+            "DXCODE1": str,
+            "DXCODE2": str,
+            "DXCODE3": str,
+            "DXCODE4": str,
+            "DXCODE5": str,
+            "DXCODE6": str,
+            "DXCODE7": str,
+            "DXCODE8": str,
+            "DXCODE9": str,
+            "DXCODE10": str,
+            "PROCCODE1": str,
+            "PROCCODE2": str,
+            "PROCCODE3": str,
+            "PROCCODE4": str,
+            "PROCCODE5": str,
+            "PROCCODE6": str,
+            "PROCCODE7": str,
+            "PROCCODE8": str,
+            "PROCCODE9": str,
+            "PROCCODE1": str,
+        },
+    )
+    df["VISIT_DATE"] = pd.to_datetime(
+        df["VISIT_DATE"], format="%Y%m%d", errors="coerce"
+    )
+    df["DISP_DATE"] = pd.to_datetime(df["DISP_DATE"], format="%Y%m%d", errors="coerce")
+    df["ED_DEPT_DATE"] = pd.to_datetime(
+        df["ED_DEPT_DATE"], format="%Y%m%d", errors="coerce"
+    )
+    df["DISP_TIME"] = pd.to_datetime(
+        df["DISP_TIME"], format="%H%M", errors="coerce"
+    ).dt.time
+    df["ED_DEPT_TIME"] = pd.to_datetime(
+        df["ED_DEPT_TIME"], format="%H%M", errors="coerce"
+    ).dt.time
+    for col in ["VISIT_LOS_MINUTES", "EIP_MINUTES", "ED_ER_MINUTES", "AGE_ADMIT"]:
+        df[col] = df[col].astype(float)
     df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
     df["GENDER"] = df["GENDER"].replace(gender_map)
-    return df
+    df = df.rename(columns={"Post_code": "POSTCODE"})
+    drop_columns = df.filter(
+        regex="DXCODE|PROCCODE|PROVIDER_SVC|PROVIDER_TYPE"
+    ).columns.to_list()
+    df["DXCODES"] = df.filter(regex="DXCODE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROCCODES"] = df.filter(regex="PROCCODE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROVIDER_SVCS"] = df.filter(regex="PROVIDER_SVC").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df["PROVIDER_TYPES"] = df.filter(regex="PROVIDER_TYPE").apply(
+        lambda x: [e for e in x if e is not None], axis=1
+    )
+    df = df.drop(drop_columns, axis=1)
+    return df.set_index("BI_NBR")
 
 
 @csv_parquet(fn=DPATH / FNS["claims"])
@@ -137,30 +288,6 @@ def get_lab(fn):
     return df.set_index("BI_NBR")
 
 
-@csv_parquet(fn=DPATH / FNS["narcs"])
-def get_nacrs(fn):
-    df = pd.read_csv(fn.with_suffix(".csv"), low_memory=False, na_values=[""])
-    df["VISIT_DATE"] = pd.to_datetime(
-        df["VISIT_DATE"], format="%Y%m%d", errors="coerce"
-    )
-    df["DISP_DATE"] = pd.to_datetime(df["DISP_DATE"], format="%Y%m%d", errors="coerce")
-    df["ED_DEPT_DATE"] = pd.to_datetime(
-        df["ED_DEPT_DATE"], format="%Y%m%d", errors="coerce"
-    )
-    df["DISP_TIME"] = pd.to_datetime(
-        df["DISP_TIME"], format="%H%M", errors="coerce"
-    ).dt.time
-    df["ED_DEPT_TIME"] = pd.to_datetime(
-        df["ED_DEPT_TIME"], format="%H%M", errors="coerce"
-    ).dt.time
-    for col in ["VISIT_LOS_MINUTES", "EIP_MINUTES", "ED_ER_MINUTES", "AGE_ADMIT"]:
-        df[col] = df[col].astype(float)
-    df = df.rename(columns={"SEX": "GENDER", "ISOLATE_NBR": "BI_NBR"})
-    df["GENDER"] = df["GENDER"].replace(gender_map)
-    df = df.rename(columns={"Post_code": "POSTCODE"})
-    return df.set_index("BI_NBR")
-
-
 @csv_parquet(fn=DPATH / FNS["pin"])
 def get_pin(fn):
     df = pd.read_csv(
@@ -193,7 +320,7 @@ def get_reg(fn):
     ]:
         df[col] = df[col].astype(int)
     df = df.drop(["SEX", "AGE_GRP_CD"], axis=1)
-    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR", "POSTAL_CD": "POSTCODE"})
+    df = df.rename(columns={"ISOLATE_NBR": "BI_NBR", "Post_code": "POSTCODE"})
     return df.set_index("BI_NBR")
 
 
@@ -219,9 +346,13 @@ def get_atc(fn):
     return df
 
 
-@csv_parquet(fn=FNS["postal_codes"])
 def get_postcodes(fn):
-    return pd.read_csv(fn)
+    return (
+        pd.read_csv(fn)
+        .rename(columns={"Postal Code": "POSTCODE", "Place Name": "REGION", 'Province' : 'PROVINCE', 'Latitude': 'LATITUDE', 'Longitude': 'LONGITUDE'})
+        .set_index("POSTCODE")
+        .drop(["Unnamed: 5", "Unnamed: 6"], axis=1)
+    )
 
 
 def get_population(fn):
@@ -300,7 +431,7 @@ class AHS:
 
     lab - Provinicial Laboratory(Lab)
 
-    narcs - National Ambulatory Care Reporting System (NACRS) & Alberta Ambulatory Care Reporting System (AACRS)
+    nacrs - National Ambulatory Care Reporting System (NACRS) & Alberta Ambulatory Care Reporting System (AACRS)
 
     pin - Pharmaceutical Information Network(PIN)
 
@@ -329,16 +460,16 @@ class AHS:
     def __init__(self):
 
         self.accs = get_accs()
+        self.nacrs = get_nacrs()
         self.claims = get_claims()
         self.dad = get_dad()
         self.lab = get_lab()
-        self.narcs = get_nacrs()
         self.pin = get_pin()
         self.reg = get_reg()
         self.vs = get_vs()
         self.atc = get_atc()
         self.population = get_population(FNS["population"])
-        self.postcodes = get_postcodes()
+        self.postcodes = get_postcodes(FNS["postcodes"])
         self.proccodes = pd.read_parquet(FNS["proccodes"])
         self.dxcodes = pd.read_parquet(FNS["dxcodes"])
 
@@ -351,7 +482,7 @@ class AHS:
             claims=self.claims,
             dad=self.dad,
             lab=self.lab,
-            narcs=self.narcs,
+            nacrs=self.nacrs,
             pin=self.pin,
             reg=self.reg,
             vs=self.vs,
@@ -372,7 +503,7 @@ class AHS:
         self.claims = self.claims[self.claims.BI_NBR.isin(isolate_nbrs)].copy()
         self.dad = self.dad[self.dad.BI_NBR.isin(isolate_nbrs)].copy()
         self.lab = self.lab[self.lab.BI_NBR.isin(isolate_nbrs)].copy()
-        self.narcs = self.narcs[self.narcs.BI_NBR.isin(isolate_nbrs)].copy()
+        self.nacrs = self.nacrs[self.nacrs.BI_NBR.isin(isolate_nbrs)].copy()
         self.pin = self.pin[self.pin.BI_NBR.isin(isolate_nbrs)].copy()
         self.reg = self.reg[self.reg.BI_NBR.isin(isolate_nbrs)].copy()
         self.vs = self.vs[self.vs.BI_NBR.isin(isolate_nbrs)].copy()

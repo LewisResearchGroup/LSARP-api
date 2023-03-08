@@ -2,16 +2,17 @@ import pandas as pd
 from . import tools as T
 import logging
 
-FNS = {
+PATHS = {
     "organisms": "/bulk/LSARP/datasets/LSARP-organisms/LSARP-organisms.csv",
     "drugs": "/bulk/LSARP/datasets/LSARP-drugs/LSARP-drugs.csv",
+    "shipments": '/bulk/LSARP/lrg-proc/LSARP/1_Raw_data/Plate-Register/APL-Shipments/Shipments/'
 }
 
 
 class LSARP:
     def __init__(
         self,
-        path_shipments="LSARP/lrg-proc/LSARP/1_Raw_data/Plate-Register/APL-Shipments/Shipments/",
+        path_shipments=PATHS["shipments"],
     ):
         self.path_shipments = path_shipments
         self.shipments = None
@@ -42,7 +43,7 @@ class LSARP:
             logging.warning(unknowns)
 
     def load_organisms(self):
-        self.organisms = pd.read_csv(FNS["organisms"], na_filter=False)
+        self.organisms = pd.read_csv(PATHS["organisms"], na_filter=False)
         mapping = {
             old: organism
             for _, (old, organism) in self.organisms[["OLD", "ORGANISM"]].iterrows()
@@ -51,4 +52,4 @@ class LSARP:
         self.mappings["organism"] = mapping
 
     def load_drugs(self):
-        self.drugs = pd.read_csv(FNS["drugs"], na_filter=False)
+        self.drugs = pd.read_csv(PATHS["drugs"], na_filter=False)
