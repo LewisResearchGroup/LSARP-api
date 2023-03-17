@@ -459,41 +459,14 @@ class AHS:
 
     def __init__(self):
 
-<<<<<<< HEAD
-        self.accs = get_accs()
-        self.nacrs = get_nacrs()
-        self.claims = get_claims()
-        self.dad = get_dad()
-        self.lab = get_lab()
-        self.pin = get_pin()
-        self.reg = get_reg()
-        self.vs = get_vs()
-=======
         self.accs, self.claims, self.dad, self.lab, self.nacrs, self.pin, self.reg, self.vs = None, None, None, None, None, None, None, None
 
->>>>>>> c60cb9bce555cbc97de725f0b7d6665022e6c775
         self.atc = get_atc()
         self.population = get_population(FNS["population"])
         self.postcodes = get_postcodes(FNS["postcodes"])
         self.proccodes = pd.read_parquet(FNS["proccodes"])
         self.dxcodes = pd.read_parquet(FNS["dxcodes"])
 
-<<<<<<< HEAD
-        self.antibiotics_names = self.pin[
-            self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
-        ].DRUG_LABEL.unique()
-
-        self.datasets = dict(
-            accs=self.accs,
-            claims=self.claims,
-            dad=self.dad,
-            lab=self.lab,
-            nacrs=self.nacrs,
-            pin=self.pin,
-            reg=self.reg,
-            vs=self.vs,
-        )
-=======
         #self.antibiotics_names = self.pin[
         #    self.pin.SUPP_DRUG_ATC_CODE.fillna("").str.match("^J01")
         #].DRUG_LABEL.unique()
@@ -524,7 +497,6 @@ class AHS:
         if what in ['vs', 'all']:    
             self.vs = get_vs()
               
->>>>>>> c60cb9bce555cbc97de725f0b7d6665022e6c775
 
     @property
     def drug_by_bi_nbr(self):
