@@ -48,11 +48,13 @@ def add_date_features_from_datetime_col(
     YEAR_QUATER - str, format: "%4d-Q%1d"
     """
 
-    month_to_trimester = {i: ((i + 3) // 4) for i in range(1, 13)}
+    month_to_quadrimester = {i: ((i + 3) // 4) for i in range(1, 13)}
 
     assert date_col_name in df.columns, "%s not in df.columns" % (date_col_name)
     assert df[date_col_name].dtype
+    
     prefix = f"{date_col_name}_" if add_prefix else ""
+    
     df.loc[:, f"{prefix}YEAR"] = df[date_col_name].dt.year
     df.loc[:, f"{prefix}MONTH"] = df[date_col_name].dt.month
     df.loc[:, f"{prefix}WEEK"] = df[date_col_name].dt.isocalendar().week
@@ -62,8 +64,8 @@ def add_date_features_from_datetime_col(
     df.loc[:, f"{prefix}DATE"] = df[date_col_name].dt.date
     df.loc[:, f"{prefix}QUARTER"] = df[date_col_name].dt.quarter
 
-    df.loc[:, f"{prefix}TRIMESTER"] = df.loc[:, f"{prefix}MONTH"].replace(
-        month_to_trimester
+    df.loc[:, f"{prefix}QUADRIMESTER"] = df.loc[:, f"{prefix}MONTH"].replace(
+        month_to_quadrimester
     )
 
     if numeric is True:
@@ -79,7 +81,7 @@ def add_date_features_from_datetime_col(
         df.loc[:, f"{prefix}YEAR_QUARTER"] = df.YEAR + df[f"{prefix}QUARTER"].apply(
             lambda x: (x - 1) / 4
         )
-        df.loc[:, f"{prefix}YEAR_TRIMESTER"] = df.YEAR + df[f"{prefix}TRIMESTER"].apply(
+        df.loc[:, f"{prefix}YEAR_QUADRIMESTER"] = df.YEAR + df[f"{prefix}QUADRIMESTER"].apply(
             lambda x: (x - 1) / 3
         )
     elif numeric is False:
@@ -95,8 +97,8 @@ def add_date_features_from_datetime_col(
         df.loc[:, f"{prefix}YEAR_QUARTER"] = (
             df.YEAR.astype(str) + "-" + df.QUARTER.astype(str)
         )
-        df.loc[:, f"{prefix}YEAR_TRIMESTER"] = (
-            df.YEAR.astype(str) + "-" + df.TRIMESTER.astype(str)
+        df.loc[:, f"{prefix}YEAR_QUADRIMESTER"] = (
+            df.YEAR.astype(str) + "-" + df.QUADRIMESTER.astype(str)
         )
     elif numeric == "mixed":
         df.loc[:, f"{prefix}YEAR_WEEK"] = df.YEAR + df[f"{prefix}WEEK"].apply(
@@ -108,7 +110,7 @@ def add_date_features_from_datetime_col(
         df.loc[:, f"{prefix}YEAR_QUARTER"] = df.YEAR + df[f"{prefix}QUARTER"].apply(
             lambda x: (x - 1) / 4
         )
-        df.loc[:, f"{prefix}YEAR_TRIMESTER"] = df.YEAR + df[f"{prefix}TRIMESTER"].apply(
+        df.loc[:, f"{prefix}YEAR_QUADRIMESTER"] = df.YEAR + df[f"{prefix}QUADRIMESTER"].apply(
             lambda x: (x - 1) / 3
         )
 

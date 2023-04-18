@@ -8,6 +8,7 @@ from .helpers import replace_interp, get_element, key_func_SIRN
 
 FN = "/bulk/LSARP/datasets/APL/APL.parquet"
 FN_RESULTS = "/bulk/LSARP/datasets/APL/APL-results-INTERP.parquet"
+FN_INDEX_ISOLATES = "/bulk/LSARP/datasets/220726-tmp__APL-grouped-BSI-episodes/221007-tmp__APL-grouped-BSI-episodes-cutoff30days.csv"
 
 
 def load_apl_data(fn=FN, years=None, datetime_numeric=False):
@@ -26,7 +27,8 @@ def load_apl_data(fn=FN, years=None, datetime_numeric=False):
     )
     df["INTERP"] = df["INTERP"].fillna("N")
     df["FLAG_COLLECT_24h_BEFORE_ADMIT"] = df["COLLECT_HOURS_AFTER_ADMIT"] < 24
-    df["HOSPITAL_ACQUIRED"] = df["COLLECT_HOURS_AFTER_ADMIT"] > 48
+    df["HOSPITAL_ONSET_48H"] = df["COLLECT_HOURS_AFTER_ADMIT"] > 48
+    df["HOSPITAL_ONSET_72H"] = df["COLLECT_HOURS_AFTER_ADMIT"] > 72  
     add_date_features_from_datetime_col(df, "COLLECT_DTM", numeric=datetime_numeric)
     if years is not None:
         df = df[df.YEAR.astype(int).isin(years)]
@@ -141,14 +143,15 @@ def gen_results(
         "DATE",
         "MONTH",
         "QUARTER",
-        "TRIMESTER",
+        "QUADRIMESTER",
         "YEAR",
         "YEAR_DAY",
         "YEAR_WEEK",
         "YEAR_MONTH",
         "YEAR_QUARTER",
-        "YEAR_TRIMESTER",
-        "HOSPITAL_ACQUIRED",
+        "YEAR_QUADRIMESTER",
+        "HOSPITAL_ONSET_48H",
+        "HOSPITAL_ONSET_72H",
         "COLLECT_HOURS_AFTER_ADMIT",
         "FLAG_COLLECT_24h_BEFORE_ADMIT",
     ],
@@ -186,17 +189,13 @@ def gen_results(
     data = data.applymap(replace_interp)
     if len(values) == 1:
         data.columns = data.columns.get_level_values(1)
-    return data.dropna(axis=1, how="all")
+    return data.dropna(axis=1, how="all").reset_index()
 
 
-def gen_indexed_BIs():
-    bi_ndx = pd.read_csv(
-        "/bulk/LSARP/datasets/220726-tmp__APL-grouped-BSI-episodes/221007-tmp__APL-grouped-BSI-episodes-cutoff30days.csv",
-        low_memory=False,
-        na_values=[""],
-    )[["BI_NBR", "index"]]
-    bi_ndx = bi_ndx[bi_ndx["index"].fillna(False)].BI_NBR.sort_values()
-    return bi_ndx.values
+def gen_reports(df):
+    apl_reports = df[['BI_NBR', 'REPORT_NAME', 'REPORT_NAME_2', 'PARENT', 'RESULT_ENTRY', 'RESULT_DISPLAY']].set_index(['BI_NBR']).replace('', None).dropna().reset_index()
+    reports = pd.pivot_table(apl_reports, index='BI_NBR', columns=['REPORT_NAME'], values='RESULT_DISPLAY', aggfunc=' '.join)
+    return reports
 
 
 class APL:
@@ -217,7 +216,8 @@ class APL:
         self.encounters = gen_encounters(df)
         self.cultures = gen_cultures(df)
         self.bi_info = gen_bi_info(df)
-        self.index = gen_indexed_BIs()
+        self.index = None
+        self.reports = gen_reports(df)
 
         if fn_results is not None:
             logging.warning(f"Loading APL-results from {fn_results}")
@@ -328,6 +328,8 @@ class APL:
 
     def gen_results(self, **kwargs):
         self.results = gen_results(self.df, **kwargs)
+        #self.results['INDEX_ISOLATE'] = [e in self.index for e in self.results.reset_index().BI_NBR]
+        #self.results.set_index('INDEX_ISOLATE', append=True, inplace=True)
         return self.results
 
     def pivot_results(
@@ -365,3 +367,77 @@ class APL:
             .drop_duplicates()
             .reset_index(drop=True)
         )
+
+    def generate_BSI_episode_index(self, episode_cutoff=30, add_to_results=True):
+        assert self.results is not None
+        index = separate_BSI_episodes(self.results, episode_cutoff=episode_cutoff)
+        self.index = index
+        if add_to_results:
+            self.results = pd.merge(self.results, index, on='BI_NBR', how='left')
+        return index
+
+
+def separate_BSI_episodes(data, episode_cutoff):
+    """
+    Mui's algorithm to identify episode index isolates.
+    Re-implemented in Python.
+    Original script: LSARP/datasets/220726-tmp__APL-grouped-BSI-episodes/code/220726-tmp__APL-grouped_BSI-episodes.R
+    """
+    data = data[data.BI_NBR.str.startswith('BI')].copy()
+
+    data['COLLECT_DTM'] = pd.to_datetime(data['COLLECT_DTM'], format="%Y-%m-%d")
+    df_APL = (data.sort_values(by=['PID', 'ORG_LONG_NAME', 'COLLECT_DTM'])
+                .groupby(['PID', 'ORG_LONG_NAME'], group_keys=False)
+                .apply(lambda x: x.assign(ORGANISM=x['ORG_LONG_NAME'],
+                                          diff=(x['COLLECT_DTM'] - x['COLLECT_DTM'].shift(fill_value=x['COLLECT_DTM'].iloc[0]))
+                                                    .apply(lambda x: x / datetime.timedelta(days=1)),
+                                          cum_diff=(x['COLLECT_DTM'] - x['COLLECT_DTM'].iloc[0])
+                                                    .apply(lambda x: x / datetime.timedelta(days=1))
+                                        ))
+                .reset_index(drop=True))
+
+    # Separate BSI episode with respect to "episode_cutoff"
+    # Assign episode numbers
+    for p in df_APL['PID'].unique():
+        for o in df_APL[df_APL['PID'] == p]['ORGANISM'].unique():
+            rows = df_APL.loc[(df_APL['PID'] == p) & (df_APL['ORGANISM'] == o)].index
+            # Select and sort by dates
+            df_current = df_APL.loc[rows].sort_values(by='COLLECT_DTM')
+            # First isolate belongs to first BSI episode
+            df_APL.loc[rows[0], 'episode_NBR'] = 1
+            # Flag whether this is an index isolate for the respective BSI episode
+            df_APL.loc[rows[0], 'index'] = True
+            # Row number of index isolate of current BSI episode; gets updated
+            index_isolate = 0
+            # Number of current BSI episode; gets updated
+            episode_i = 1
+            for i in range(1, len(df_current)):
+                # Check if current isolate is less than "episode_cutoff" days from index isolate
+                if df_current.loc[rows[i], 'cum_diff'] <= df_current.loc[rows[index_isolate], 'cum_diff'] + episode_cutoff:
+                    df_APL.loc[rows[i], 'episode_NBR'] = episode_i
+                else:
+                    # Update index isolate (i.e. new episode)
+                    index_isolate = i
+                    episode_i += 1
+                    df_APL.loc[rows[i], 'episode_NBR'] = episode_i
+                    df_APL.loc[rows[i], 'index'] = True
+
+    # Total number of episodes per patient per organism
+    df_APL['total_n_BI'] = df_APL.groupby(['PID', 'GENDER', 'ORGANISM'])['episode_NBR'].transform(max)
+
+    # Total number of isolates
+    df_APL['n_iso_episode'] = df_APL.groupby(['PID', 'GENDER', 'ORGANISM', 'episode_NBR'])['BI_NBR'].transform('nunique')
+    
+    #Renaming variables
+    out_var_name = f'INDEX_{episode_cutoff}DAYS'
+    out_var_name_episode = f'N_ISO_EPISODE_INDEX_{episode_cutoff}DAYS'
+    out_var_name_total = 'TOTAL_N_BI_NBRS'
+    out_var_name_episode_nbr = 'EPISODE_NBR'
+    
+    df_APL = df_APL.rename(columns={'index': out_var_name, 
+                                    'n_iso_episode': out_var_name_episode, 
+                                    'total_n_BI': out_var_name_total, 
+                                    'episode_NBR': out_var_name_episode_nbr})
+
+    out_vars = ['BI_NBR', out_var_name, out_var_name_episode, out_var_name_total, out_var_name_episode_nbr]
+    return df_APL.reset_index()[out_vars]

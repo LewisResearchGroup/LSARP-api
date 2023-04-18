@@ -3,9 +3,9 @@ from . import tools as T
 import logging
 
 PATHS = {
-    "organisms": "/bulk/LSARP/datasets/LSARP-organisms/LSARP-organisms.csv",
-    "drugs": "/bulk/LSARP/datasets/LSARP-drugs/LSARP-drugs.csv",
-    "shipments": '/bulk/LSARP/lrg-proc/LSARP/1_Raw_data/Plate-Register/APL-Shipments/Shipments/'
+    "organisms": "/bulk/LSARP/datasets/APL/versions/current/APL-organisms.csv",
+    "drugs": "/bulk/LSARP/datasets/APL/versions/current/APL-drugs.csv",
+    "shipments": "/bulk/LSARP/lrg-proc/LSARP/1_Raw_data/Plate-Register/APL-Shipments/Shipments/"
 }
 
 
