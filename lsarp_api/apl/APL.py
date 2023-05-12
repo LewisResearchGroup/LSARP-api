@@ -6,9 +6,47 @@ import datetime
 from ..tools import age_to_age_group, add_date_features_from_datetime_col
 from .helpers import replace_interp, get_element, key_func_SIRN
 
-FN = "/bulk/LSARP/datasets/APL/versions/current/230510-sw__APL.parquet"
-FN_RESULTS = "/bulk/LSARP/datasets/APL/versions/current/230510-sw__APL-results-INTERP.parquet"
+FN = "/bulk/LSARP/datasets/APL/versions/current/230512-sw__APL.parquet"
+FN_RESULTS = "/bulk/LSARP/datasets/APL/versions/current/230512-sw__APL-results-INTERP.parquet"
 
+RESULTS_INDEX_COLS = [
+        "PID",
+        "BI_NBR",
+        "ORGANISM",
+        "ORG_LONG_NAME",
+        "ORG_SHORT_NAME",
+        "ORG_GENUS",
+        "ORG_GRAM_TYPE",
+        "ORG_GROUP",
+        "ORG_GROUP_SHORT",
+        "AGE_GRP",
+        "NAGE_YR",
+        "GENDER",
+        "ORD_ENCNTR_TYPE",
+        "ENCR_GRP",
+        "CURRENT_PT_FACILITY",
+        "ENCNTR_ADMIT_DTM",
+        "COLLECT_DTM",
+        "CULT_START_DTM",
+        "DSCHG_DTM",
+        "DAY",
+        "DAYOFWEEK",
+        "DAYOFYEAR",
+        "DATE",
+        "MONTH",
+        "QUARTER",
+        "QUADRIMESTER",
+        "YEAR",
+        "YEAR_DAY",
+        "YEAR_WEEK",
+        "YEAR_MONTH",
+        "YEAR_QUARTER",
+        "YEAR_QUADRIMESTER",
+        "HOSPITAL_ONSET_48H",
+        "HOSPITAL_ONSET_72H",
+        "COLLECT_HOURS_AFTER_ADMIT",
+        "FLAG_COLLECT_24h_BEFORE_ADMIT",
+]
 
 
 def load_apl_data(fn=FN, format_data=False, years=None, datetime_numeric=False):
@@ -45,7 +83,6 @@ def gen_cultures(df):
         "COLLECT_DTM",
         "ORGANISM",
         "YEAR",
-        #"CULT_ID",
         "CURRENT_PT_FACILITY",
     ]
     return df[cols].drop_duplicates().reset_index(drop=True)
@@ -96,48 +133,18 @@ def gen_organisms(df):
 
 def gen_results(
     df,
-    values=["INTERP"],
-    columns=["DRUG"],
-    index=[
-        "PID",
-        "BI_NBR",
-        "ORGANISM",
-        "ORG_LONG_NAME",
-        "ORG_SHORT_NAME",
-        "ORG_GENUS",
-        "ORG_GRAM_TYPE",
-        "ORG_GROUP",
-        "ORG_GROUP_SHORT",
-        "AGE_GRP",
-        "NAGE_YR",
-        "GENDER",
-        "ORD_ENCNTR_TYPE",
-        "ENCR_GRP",
-        "CURRENT_PT_FACILITY",
-        "ENCNTR_ADMIT_DTM",
-        "COLLECT_DTM",
-        "CULT_START_DTM",
-        "DSCHG_DTM",
-        "DAY",
-        "DAYOFWEEK",
-        "DAYOFYEAR",
-        "DATE",
-        "MONTH",
-        "QUARTER",
-        "QUADRIMESTER",
-        "YEAR",
-        "YEAR_DAY",
-        "YEAR_WEEK",
-        "YEAR_MONTH",
-        "YEAR_QUARTER",
-        "YEAR_QUADRIMESTER",
-        "HOSPITAL_ONSET_48H",
-        "HOSPITAL_ONSET_72H",
-        "COLLECT_HOURS_AFTER_ADMIT",
-        "FLAG_COLLECT_24h_BEFORE_ADMIT",
-    ],
+    values=None,
+    columns=None,
+    index=None,
 ):
 
+    if values is None:
+        values = ['INTERP']
+    if columns is None:
+        columns = ['DRUG']
+    if index is None:
+        index = RESULTS_INDEX_COLS
+    
     apl_df = df.copy()
     
     # Store index for later
@@ -348,7 +355,7 @@ class APL:
             .reset_index(drop=True)
         )
 
-    def generate_BSI_episode_index(self, episode_cutoff=30, add_to_df=True, add_to_results=True):
+    def gen_index(self, episode_cutoff=30, add_to_df=True, add_to_results=True):
         assert self.results is not None
         index = separate_BSI_episodes(self.results, episode_cutoff=episode_cutoff)
         self.index = index
@@ -362,10 +369,6 @@ class APL:
         export_dashboard_data(self.results.reset_index(), fn_out)
         
 
-        
-        
-        
-        
         
 def separate_BSI_episodes(data, episode_cutoff):
     """
@@ -438,25 +441,22 @@ DASHBOARD_COLUMNS = ['ORGANISM', 'ORG_LONG_NAME', 'ORG_SHORT_NAME', 'ORG_GENUS',
        'GENDER', 'ENCR_GRP', 'CURRENT_PT_FACILITY', 'COLLECT_DTM', 'DAY',
        'DAYOFWEEK', 'DAYOFYEAR', 'DATE', 'MONTH', 'QUARTER', 'QUADRIMESTER',
        'YEAR', 'YEAR_DAY', 'YEAR_WEEK', 'YEAR_MONTH', 'YEAR_QUARTER',
-       'YEAR_QUADRIMESTER', 'HOSPITAL_ONSET_48H', 'HOSPITAL_ONSET_72H', 'Clindamycin',
-       'Trimethoprim-sulfamethoxazole', 'Tetracycline', 'Rifampin',
-       'Ampicillin', 'Cefazolin', 'Ciprofloxacin', 'Vancomycin', 'Cloxacillin',
-       'Erythromycin', 'Gentamicin', 'Nitrofurantoin', 'Penicillin',
-       'Fusidic Acid', 'Mupirocin', 'Linezolid', 'Cefoxitin', 'Levofloxacin',
-       'Meropenem', 'Ceftriaxone', 'Daptomycin', 'Ertapenem',
-       'Chloramphenicol', 'Ceftobiprole', 'Piperacillin-tazobactam',
-       'Tigecycline', 'Moxifloxacin', 'Quinupristin-dalfopristin',
-       'Amoxicillin-clavulanate', 'Doxycycline', 'Ceftaroline', 'Cefepime',
-       'Cefpodoxime', 'Ceftazidime', 'Cefuroxime', 'Cephalothin',
-       'Norfloxacin', 'Tobramycin', 'Amikacin', 'Piperacillin', 'Aztreonam',
-       'Trimethoprim', 'Colistin', 'Nalidixic Acid', 'Cefixime', 'Fosfomycin',
-       'Minocycline', 'Cefotaxime', 'Ceftazidime-avibactam',
-       'Ceftolozane-tazobactam', 'Amoxicillin', 'Azithromycin',
-       'Metronidazole', 'Streptomycin - High Level', 'Gentamicin - High Level',
-       'Ticarcillin-clavulanate', 'Cefiderocol', 'Plazomicin',
-       '5-Fluorocytosine', 'Itraconazole', 'Fluconazole', 'Amphotericin B',
-       'Voriconazole', 'Ketoconazole', 'Caspofungin', 'Posaconazole',
-       'Micafungin', 'Anidulafungin', 'Cephalexin']
+       'YEAR_QUADRIMESTER', 'HOSPITAL_ONSET_48H', 'HOSPITAL_ONSET_72H', 
+       '5-Fluorocytosine',
+       'Amikacin', 'Amoxicillin-clavulanate', 'Amphotericin B', 'Ampicillin',
+       'Aztreonam', 'Caspofungin', 'Cefazolin', 'Cefepime', 'Cefotaxime',
+       'Cefoxitin', 'Cefpodoxime', 'Ceftazidime', 'Ceftobiprole',
+       'Ceftriaxone', 'Cefuroxime', 'Cephalothin', 'Chloramphenicol',
+       'Ciprofloxacin', 'Clindamycin', 'Cloxacillin', 'Colistin', 'Daptomycin',
+       'Ertapenem', 'Erythromycin', 'Fluconazole', 'Fusidic Acid',
+       'Gentamicin', 'Gentamicin - High Level', 'Itraconazole', 'Ketoconazole',
+       'Levofloxacin', 'Linezolid', 'Meropenem', 'Metronidazole',
+       'Moxifloxacin', 'Mupirocin', 'Nalidixic Acid', 'Nitrofurantoin',
+       'Norfloxacin', 'Penicillin', 'Piperacillin', 'Piperacillin-tazobactam',
+       'Quinupristin-dalfopristin', 'Rifampin', 'Streptomycin - High Level',
+       'Tetracycline', 'Tigecycline', 'Tobramycin', 'Trimethoprim',
+       'Trimethoprim-sulfamethoxazole', 'Vancomycin', 'Voriconazole'
+]
 
 
 def export_dashboard_data(df, fn_out):
