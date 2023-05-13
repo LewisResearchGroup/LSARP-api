@@ -47,22 +47,22 @@ def age_to_age_group(x):
     x = int(x)
     if x < 0:
         return "Unknown"
-    elif x < 11:
-        return "00-10"
-    elif x < 21:
-        return "11-20"
-    elif x < 31:
-        return "21-30"
-    elif x < 41:
-        return "31-40"
-    elif x < 51:
-        return "41-50"
-    elif x < 61:
-        return "51-60"
-    elif x < 71:
-        return "61-70"
-    elif x < 81:
-        return "71-80"
+    elif x < 10:
+        return "00-09"
+    elif x < 20:
+        return "10-19"
+    elif x < 30:
+        return "20-29"
+    elif x < 40:
+        return "30-39"
+    elif x < 50:
+        return "40-49"
+    elif x < 60:
+        return "50-59"
+    elif x < 70:
+        return "60-69"
+    elif x < 80:
+        return "70-79"
     else:
         return "80+"
 
