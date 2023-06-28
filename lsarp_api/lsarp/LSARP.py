@@ -31,12 +31,14 @@ class LSARP:
             self.shipments = self.shipments.sort_values(
                 ["PLATE_SETUP", "PLATE_ROW", "PLATE_COL"]
             )
-        self.shipments = self.shipments.drop('ORGANISM')
-        unknowns = self.shipments[
-            ~self.shipments.ORGANISM.apply(
-                lambda x: x in self.organisms.ORGANISM.to_list()
-            )
-        ]
-        if len(unknowns) != 0:
-            logging.warning(unknowns)
+            
+        #self.shipments = self.shipments.drop('ORGANISM')
+        #unknowns = self.shipments[
+        #    ~self.shipments.ORGANISM.apply(
+        #        lambda x: x in self.organisms.ORGANISM.to_list()
+        #    )
+        #]
+        
+        #if len(unknowns) != 0:
+        #    logging.warning(unknowns)
 

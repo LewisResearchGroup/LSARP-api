@@ -10,42 +10,45 @@ FN = "/bulk/LSARP/datasets/APL/versions/current/230512-sw__APL.parquet"
 FN_RESULTS = "/bulk/LSARP/datasets/APL/versions/current/230512-sw__APL-results-INTERP.parquet"
 
 RESULTS_INDEX_COLS = [
-        "PID",
-        "BI_NBR",
-        "ORGANISM",
-        "ORG_LONG_NAME",
-        "ORG_SHORT_NAME",
-        "ORG_GENUS",
-        "ORG_GRAM_TYPE",
-        "ORG_GROUP",
-        "ORG_GROUP_SHORT",
-        "AGE_GRP",
-        "NAGE_YR",
-        "GENDER",
-        "ORD_ENCNTR_TYPE",
-        "ENCR_GRP",
-        "CURRENT_PT_FACILITY",
-        "ENCNTR_ADMIT_DTM",
-        "COLLECT_DTM",
-        "CULT_START_DTM",
-        "DSCHG_DTM",
-        "DAY",
-        "DAYOFWEEK",
-        "DAYOFYEAR",
-        "DATE",
-        "MONTH",
-        "QUARTER",
-        "QUADRIMESTER",
-        "YEAR",
-        "YEAR_DAY",
-        "YEAR_WEEK",
-        "YEAR_MONTH",
-        "YEAR_QUARTER",
-        "YEAR_QUADRIMESTER",
-        "HOSPITAL_ONSET_48H",
-        "HOSPITAL_ONSET_72H",
-        "COLLECT_HOURS_AFTER_ADMIT",
-        "FLAG_COLLECT_24h_BEFORE_ADMIT",
+    "SOURCE_LIS",
+    "PID",
+    "BI_NBR",
+    "ORGANISM",
+    "ORG_LONG_NAME",
+    "ORG_SHORT_NAME",
+    "ORG_GENUS",
+    "ORG_GRAM_TYPE",
+    "ORG_GROUP",
+    "ORG_GROUP_SHORT",
+    "AGE_GRP",
+    "NAGE_YR",
+    "GENDER",
+    "ORD_ENCNTR_TYPE",
+    "ENCR_GRP",
+    "CURRENT_PT_FACILITY",
+    "ENCNTR_ADMIT_DTM",
+    "COLLECT_DTM",
+    "CULT_START_DTM",
+    "DSCHG_DTM",
+    "DAY",
+    "DAYOFWEEK",
+    "DAYOFYEAR",
+    "DATE",
+    "MONTH",
+    "QUARTER",
+    "QUADRIMESTER",
+    "YEAR",
+    "YEAR_DAY",
+    "YEAR_WEEK",
+    "YEAR_MONTH",
+    "YEAR_QUARTER",
+    "YEAR_QUADRIMESTER",
+    "HOSPITAL_ONSET_48H",
+    "HOSPITAL_ONSET_72H",
+    "COLLECT_HOURS_AFTER_ADMIT",
+    "FLAG_COLLECT_24h_BEFORE_ADMIT",
+    "FLAG_DSCHG_OUT_OF_BOUNDS",
+    "FLAG_AGE_GT_130YR",
 ]
 
 
@@ -149,14 +152,12 @@ def gen_results(
     
     # Store index for later
     INDEX = apl_df[index].drop_duplicates()
-    logging.info(f'INDEX length: {len(index)}')
+    logging.info(f'Results index length: {len(INDEX)}')
+
     apl_df = apl_df[apl_df["DRUG"].notna()]
+       
     apl_df = apl_df[apl_df.INTERP.isin(['S', 'R', 'I'])]    
-    
-    #apl_df["INTERP"] = pd.Categorical(
-    #    apl_df["INTERP"], categories=["N", "S", "I", "R"], ordered=True
-    #)
-    
+        
     apl_df.BI_NBR = apl_df.BI_NBR.fillna("NA")
     missing_values = apl_df[index + columns + values].isna().sum()
     if missing_values.sum() != 0:
@@ -171,16 +172,18 @@ def gen_results(
         aggfunc=list,
         dropna=True, # dropna needs to be True otherwise out of memory
     )
-    
+
     # Reindex here to get all samples
-    data = data.reindex(INDEX).fillna('N')
+    data = data.reindex(INDEX).fillna('K')
     
     for col in data.columns:
         data[col] = data[col].apply(get_element)
         
     data = data.applymap(replace_interp)
+    
     if len(values) == 1:
         data.columns = data.columns.get_level_values(1)
+        
     return data.reset_index()
 
 
@@ -433,7 +436,7 @@ def separate_BSI_episodes(data, episode_cutoff):
                                     'episode_NBR': out_var_name_episode_nbr})
 
     out_vars = ['BI_NBR', out_var_name, out_var_name_episode, out_var_name_total, out_var_name_episode_nbr]
-    return df_APL.reset_index()[out_vars]
+    return df_APL.reset_index()[out_vars].fillna(False)
 
 
 DASHBOARD_COLUMNS = ['ORGANISM', 'ORG_LONG_NAME', 'ORG_SHORT_NAME', 'ORG_GENUS',
