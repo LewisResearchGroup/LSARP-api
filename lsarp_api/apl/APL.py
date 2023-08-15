@@ -6,8 +6,9 @@ import datetime
 from ..tools import age_to_age_group, add_date_features_from_datetime_col
 from .helpers import replace_interp, get_element, key_func_SIRN
 
-FN = "/bulk/LSARP/datasets/APL/versions/current/230512-sw__APL.parquet"
-FN_RESULTS = "/bulk/LSARP/datasets/APL/versions/current/230512-sw__APL-results-INTERP.parquet"
+FN = "/bulk/LSARP/datasets/APL/versions/{version}/{version}-sw__APL.parquet"
+FN_RESULTS = "/bulk/LSARP/datasets/APL/versions/{version}/{version}-sw__APL-results-INTERP.parquet"
+FN_OUTCOME = '/bulk/LSARP/datasets/220401-AW__AHS_Outcome_Data/230809_Outcomes_and_Scores/230809-AW__Outcomes_and_SeverityScores.csv'
 
 RESULTS_INDEX_COLS = [
     "SOURCE_LIS",
@@ -174,7 +175,7 @@ def gen_results(
     )
 
     # Reindex here to get all samples
-    data = data.reindex(INDEX).fillna('K')
+    data = data.reindex(INDEX).fillna('N')
     
     for col in data.columns:
         data[col] = data[col].apply(get_element)
@@ -198,11 +199,20 @@ class APL:
         self,
         fn=FN,
         fn_results=FN_RESULTS,
+        version='230808',
         organisms=None,
         years=None,
         bi_nbrs=None,
         datetime_numeric=False,
     ):
+        
+       
+        if version:
+            if fn:
+                fn = str(fn).format(version=version)
+            if fn_results:
+                fn_results = str(fn_results).format(version=version)
+        
         logging.warning(f"Loading APL data from {fn}")
         df = load_apl_data(fn=fn, years=years, datetime_numeric=datetime_numeric)
         self.df = df
@@ -368,9 +378,10 @@ class APL:
             self.results = pd.merge(self.results, index, on='BI_NBR', how='left')
         return index
 
-    def export_dashboard_data(self, fn_out):
-        export_dashboard_data(self.results.reset_index(), fn_out)
-        
+    def create_dashboard_data(self):
+        dasboard_data = create_dashboard_data(self.results.reset_index())
+        return dasboard_data
+    
 
         
 def separate_BSI_episodes(data, episode_cutoff):
@@ -462,9 +473,15 @@ DASHBOARD_COLUMNS = ['ORGANISM', 'ORG_LONG_NAME', 'ORG_SHORT_NAME', 'ORG_GENUS',
 ]
 
 
-def export_dashboard_data(df, fn_out):
-    df = df.set_index('BI_NBR')
-    df = df[df.N_ISO_EPISODE_INDEX_30DAYS == True]
-    df[DASHBOARD_COLUMNS].to_parquet(fn_out)
-    
+
+def create_dashboard_data(apl_results, fn_outcome=FN_OUTCOME):
+    apl_results = apl_results.set_index('BI_NBR')
+
+    # Filter for index isoloates
+    index_isolates = apl_results[apl_results.INDEX_30DAYS.fillna(False)]
+    outcome = pd.read_csv(fn_outcome).set_index('BI_NBR').filter(regex='OUTCOME|SCORE')
+    outcome_colums = outcome.columns.to_list()
+    df = pd.merge(index_isolates, outcome, how='left', left_index=True, right_index=True)
+    df = df[DASHBOARD_COLUMNS+outcome_colums]
+    return df
     

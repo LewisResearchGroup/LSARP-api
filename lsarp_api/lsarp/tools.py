@@ -136,7 +136,7 @@ def read_shipment(fn):
     try:
         df = format_shipment(pd.read_excel(fn))
     except Exception as e:
-        logging.error(f"Cannot process file {fn}:\n e")
+        logging.error(f"Cannot process file {fn}:\n {e}")
         return None
     df["SHIPMENT_FILE"] = P(fn).name
     return df
