@@ -180,6 +180,8 @@ class AHS:
         
         self.dxcodes_meta = pd.read_parquet(FNS["dxcodes_meta"]['fn'])
            
+        self.datasets = {}    
+            
         fn = FNS["postcodes"]["fn"]
         if fn.is_file():
             logging.warning(f'Reading consensus postal codes from {fn}')
@@ -201,48 +203,56 @@ class AHS:
         else:
             logging.warning(f'File not found {fn}')                
 
-
+    
 
     def load(self, what):
         if what in ['accs', 'all']:
             fn = self.FNS['accs']['fn']
             logging.warning(f'Loading ACCS data from {fn}')
             self.acc = pd.read_parquet(fn)
-
+            self.datasets['acc'] = self.acc
+                                 
         if what in ['claims', 'all']:    
             fn = self.FNS['claims']['fn']
             logging.warning(f'Loading CLAIMS data from {fn}')
             self.claims = pd.read_parquet(fn)
+            self.datasets['claims'] = self.claims
 
         if what in ['dad', 'all']:
             fn = self.FNS['dad']['fn']
             logging.warning(f'Loading DAD data from {fn}')
             self.dad = pd.read_parquet(fn)
+            self.datasets['dad'] = self.dad
 
         if what in ['lab', 'all']:    
             fn = self.FNS['lab']['fn']
             logging.warning(f'Loading LAB data from {fn}')
             self.lab = pd.read_parquet(fn)
+            self.datasets['lab'] = self.lab
 
         if what in ['nacrs', 'all']:
             fn = self.FNS['nacrs']['fn']
             logging.warning(f'Loading NACRS data from {fn}')
             self.nacrs = pd.read_parquet(fn)
+            self.datasets['nacrs'] = self.nacrs
 
         if what in ['pin', 'all']:    
             fn = self.FNS['pin']['fn']
             logging.warning(f'Loading PIN data from {fn}')
             self.pin = pd.read_parquet(fn)
+            self.datasets['pin'] = self.pin
 
         if what in ['reg', 'all']:
             fn = self.FNS['reg']['fn']
             logging.warning(f'Loading REG data from {fn}')
             self.reg = pd.read_parquet(fn)
+            self.datasets['reg'] = self.reg
 
         if what in ['vs', 'all']:    
             fn = self.FNS['vs']['fn']
             logging.warning(f'Loading VS data from {fn}')
             self.vs = pd.read_parquet(fn)
+            self.datasets['vs'] = self.vs
 
 
     def get_slice(self, kind='dxcodes', days_before=365, days_after=-7, reference_time_col='COLLECT_DTM', time_col='ADMITDATE'):

@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import date
+from .dashboard import create_dashboard_data
 
 
 def format_apl_data(df, years=None, datetime_numeric=False):
@@ -173,3 +174,4 @@ def crosstab_agegrp_gender_year(df):
         .T.fillna(0)
         .astype(int)
     )
+
