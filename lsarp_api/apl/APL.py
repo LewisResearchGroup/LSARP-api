@@ -6,6 +6,7 @@ import datetime
 from ..tools import age_to_age_group, add_date_features_from_datetime_col
 from .helpers import replace_interp, get_element, key_func_SIRN
 
+VERSION = "230924"
 FN = "/bulk/LSARP/datasets/APL/versions/{version}/{version}-sw__APL.parquet"
 FN_RESULTS = "/bulk/LSARP/datasets/APL/versions/{version}/{version}-sw__APL-results-INTERP.parquet"
 
@@ -198,7 +199,7 @@ class APL:
         self,
         fn=FN,
         fn_results=FN_RESULTS,
-        version='230808',
+        version=VERSION,
         organisms=None,
         years=None,
         bi_nbrs=None,
